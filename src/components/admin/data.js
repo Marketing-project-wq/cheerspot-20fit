@@ -1,0 +1,167 @@
+// Mock data and pure helpers from the superadmin design. Nothing here talks to a backend.
+import { pick, REASONS, STRINGS } from './strings.js'
+
+export const HOUR = 3600000
+export const MAX_DURS = [15, 30, 45]
+export const DEFAULT_SETTINGS = { autoFlag: true, needTx: true, open: true, autoApprove: false }
+export const DEFAULT_WORDS = ['bego', 'anjir', 'goblok', 'bangsat']
+export const DEFAULT_EVENT = 'HYROX Sportfest Vol.3'
+
+export const pad = n => String(n).padStart(2, '0')
+
+export const hm = ts => {
+  const d = new Date(ts)
+  return pad(d.getHours()) + ':' + pad(d.getMinutes())
+}
+
+export const fmt = s => {
+  const v = Math.max(0, Math.floor(s || 0))
+  return Math.floor(v / 60) + ':' + pad(v % 60)
+}
+
+// Fake waveform bars, one per 56 slots.
+export const waveBars = id =>
+  Array.from({ length: 56 }, (_, i) =>
+    Math.round(4 + 15 * Math.abs(Math.sin(i * 1.31 + id * 2.7) * Math.cos(i * 0.53 + id))),
+  )
+
+export const makeItem = (id, minsAgo, extra) => ({
+  id,
+  ts: Date.now() - minsAgo * 60000,
+  status: 'pending',
+  transcribing: false,
+  isNew: false,
+  bib: '',
+  ...extra,
+})
+
+// Cheers that arrive on the live feed, in order.
+export const POOL = [
+  { sender: 'Nadia', athlete: 'Fajar Ramadhan', bib: '173', dur: 12, text: 'Fajar! Burpee broad jump-nya tinggal dikit lagi, jangan berhenti! Kamu keren banget hari ini!' },
+  { sender: 'Geng Lari Pagi', athlete: 'Maya Sari', bib: '064', dur: 16, text: 'Mayaaa! Kita dari geng lari pagi teriak paling kencang buat kamu! Farmers carry-nya hajar!' },
+  { sender: 'Ayah', athlete: 'Kirana Putri', bib: '118', dur: 9, text: 'Kirana, ayah lihat dari tribun. Atur napas, langkah stabil, kamu pasti sampai finish.' },
+  { sender: 'Bayu', athlete: 'Teddy Gunawan', bib: '', dur: 11, text: 'Teddy! Lunges terakhir nih, kaki boleh gemeter tapi semangat jangan! Gas!' },
+]
+
+export function createInitialItems() {
+  return [
+    makeItem(6, 0.4, { sender: 'Dimas', athlete: 'Sarah Wijaya', bib: '087', dur: 9, text: 'Sarah! Ski erg-nya mantap, terus jaga ritme, satu kilometer lagi!', transcribing: true }),
+    makeItem(5, 1.2, { sender: 'Kevin', athlete: 'Andre Kusuma', bib: '211', dur: 13, text: 'Ayo Andre, gas terus! Jangan lari kayak orang b3go, anjirrrr, yang kenceng dong!' }),
+    makeItem(4, 2.1, { sender: 'Rina', athlete: 'Bima Prakoso', bib: '142', dur: 14, text: 'Bima! Kamu pasti bisa! Satu station lagi, sled push-nya sikat! Kita semua nungguin di finish line!' }),
+    makeItem(3, 3.6, { sender: 'Tim Kantor Lantai 5', athlete: 'Putri Anjani', bib: '056', dur: 18, text: 'PUTRIII! Semangat ya, dari anak-anak lantai lima! Wall ball-nya kamu jago, jangan kasih kendor!' }),
+    makeItem(2, 5.2, { sender: 'Mama', athlete: 'Rafi Hidayat', bib: '009', dur: 11, text: 'Rafi sayang, mama bangga banget. Pelan-pelan aja yang penting selesai. Mama tunggu di tribun ya.' }),
+    makeItem(1, 7.5, { sender: 'Joko', athlete: 'Liana Hartono', dur: 10, text: 'Liana! Rowing-nya udah setengah jalan, tarik napas, tarik tali, kamu kuat!' }),
+    makeItem(-1, 9, { sender: 'Sinta', athlete: 'Galih Saputra', bib: '095', dur: 12, text: 'Galih, ayo! Sandbag lunges-nya pelan tapi pasti. Bangga sama kamu!', status: 'approved' }),
+    makeItem(-2, 11, { sender: 'Om Heru', athlete: 'Dewi Lestari', bib: '031', dur: 8, text: 'Dewi! Tinggal satu putaran lari lagi, habisin!', status: 'approved' }),
+    makeItem(-3, 12, { sender: 'FitPromo', athlete: 'Semua atlet', dur: 15, text: 'Promo membership gym diskon lima puluh persen, follow akun kami sekarang!', status: 'rejected', reason: 'spam' }),
+    makeItem(-4, 16, { sender: 'Lala', athlete: 'Yoga Pratama', bib: '150', dur: 10, text: 'Yoga! Kamu udah setengah jalan, jangan kendor!', status: 'played', playedAt: '19:31' }),
+    makeItem(-5, 19, { sender: 'Coach Ari', athlete: 'Tim 20FIT Elite', dur: 13, text: 'Tim Elite, ingat latihan kita! Napas, form, gas pol sampai finish!', status: 'played', playedAt: '19:28' }),
+  ]
+}
+
+// Word matching: lowercase, leetspeak to letters, collapse repeated letters (anjirrrr -> anjir).
+const norm = s =>
+  s
+    .toLowerCase()
+    .replace(/[4@]/g, 'a')
+    .replace(/[1!|]/g, 'i')
+    .replace(/3/g, 'e')
+    .replace(/0/g, 'o')
+    .replace(/5|\$/g, 's')
+    .replace(/7/g, 't')
+    .replace(/[^a-z]/g, '')
+    .replace(/(.)\1+/g, '$1')
+
+const hitWord = (tok, words) => {
+  const n = norm(tok)
+  if (!n) return null
+  return (
+    words.find(w => {
+      const wn = norm(w)
+      return wn && (n === wn || (wn.length >= 4 && n.startsWith(wn)))
+    }) || null
+  )
+}
+
+// Returns the flagged words found in a transcript and the text split into highlight tokens.
+export function scanText(text, words) {
+  const src = String(text || '')
+  const parts = src.split(/(\s+|[.,!?;:"“”()]+)/).filter(p => p !== '')
+  const hits = new Set()
+  const tokens = parts.map(p => {
+    const w = /[\w@$!|]/.test(p) && !/^[.,!?;:"“”()\s]+$/.test(p) ? hitWord(p, words) : null
+    if (w) hits.add(w)
+    return { t: p, f: !!w }
+  })
+  // Multi-word phrases from the list.
+  const low = ' ' + src.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ') + ' '
+  words
+    .filter(w => /\s/.test(w))
+    .forEach(w => {
+      if (low.includes(' ' + w.toLowerCase().trim().replace(/\s+/g, ' ') + ' ')) hits.add(w)
+    })
+  return { hits: [...hits], tokens }
+}
+
+export const visibleItems = (items, tab, q) => {
+  const qq = (q || '').trim().toLowerCase()
+  return items
+    .filter(
+      x =>
+        (tab === 'all' || x.status === tab) &&
+        (!qq ||
+          (x.athlete || '').toLowerCase().includes(qq) ||
+          (x.bib || '').includes(qq) ||
+          (x.sender || '').toLowerCase().includes(qq)),
+    )
+    .sort((a, b) => b.ts - a.ts)
+}
+
+export const focusIdOf = (vis, focus) => (vis.some(x => x.id === focus) ? focus : vis[0] ? vis[0].id : null)
+
+// Label, background and text colour for a card's status pill.
+export function statusInfo(x, now, lang) {
+  const S = STRINGS[lang] || STRINGS.id
+  const base = {
+    approved: [S.stApproved, '#DCFCE7', '#0F6B33'],
+    rejected: [S.stRejected, '#FFE3E3', '#9E0000'],
+    played: [S.stPlayed, '#ECECE6', '#3A3A36'],
+  }[x.status]
+  if (!base) return { label: '', bg: '', fg: '' }
+  const [text, bg, fg] = base
+  let label = text
+  if (x.status === 'rejected') {
+    const r = REASONS.find(z => z.key === x.reason) || REASONS.find(z => z.key === 'spam')
+    label = text + ' · ' + pick(r.label, lang)
+  } else if (x.status === 'played') {
+    label = text + ' · ' + (x.playedAt || '')
+  } else if (x.status === 'approved' && now - x.ts >= HOUR) {
+    label = S.stExpired
+  } else if (x.status === 'approved' && x.autoApproved) {
+    label = S.stAuto
+  }
+  return { label, bg, fg }
+}
+
+// 25x25 placeholder QR matrix (true = dark module), as in the design.
+export const QR_CELLS = (() => {
+  const N = 25
+  const finder = (x, y, ox, oy) => {
+    const dx = x - ox
+    const dy = y - oy
+    if (dx < 0 || dy < 0 || dx > 6 || dy > 6) return null
+    return dx === 0 || dy === 0 || dx === 6 || dy === 6 || (dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4)
+  }
+  const out = []
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      let v = finder(x, y, 0, 0) ?? finder(x, y, 18, 0) ?? finder(x, y, 0, 18)
+      if (v === null) {
+        const sep = (x < 8 && y < 8) || (x > 16 && y < 8) || (x < 8 && y > 16)
+        v = sep ? false : (x * 7 + y * 13 + x * y * 3) % 5 < 2
+      }
+      out.push(v)
+    }
+  }
+  return out
+})()
