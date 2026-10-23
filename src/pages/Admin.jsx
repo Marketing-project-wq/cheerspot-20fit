@@ -24,7 +24,7 @@ export default function Admin() {
   return (
     <div className="adm-root">
       {session ? (
-        <ModerationDashboard adminName="Admin 20FIT" liveFeed onLogout={() => setSession(null)} />
+        <ModerationDashboard adminName="Admin 20FIT" onLogout={() => setSession(null)} />
       ) : (
         <AdminLogin onSuccess={handleLogin} />
       )}

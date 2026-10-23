@@ -90,7 +90,6 @@ export default function useModeration({ lang, liveFeed }) {
 
   useEffect(() => {
     const set = handles.current
-    later(() => finishTx(6), 25000)
     set.add(setInterval(() => setNow(Date.now()), 30000))
     if (liveFeed) set.add(setInterval(() => arrive(), 14000))
     return () => {

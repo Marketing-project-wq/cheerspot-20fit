@@ -43,20 +43,9 @@ export const POOL = [
   { sender: 'Bayu', athlete: 'Teddy Gunawan', bib: '', dur: 11, text: 'Teddy! Lunges terakhir nih, kaki boleh gemeter tapi semangat jangan! Gas!' },
 ]
 
+// Starts empty: real cheers come from Supabase once it is connected.
 export function createInitialItems() {
-  return [
-    makeItem(6, 0.4, { sender: 'Dimas', athlete: 'Sarah Wijaya', bib: '087', dur: 9, text: 'Sarah! Ski erg-nya mantap, terus jaga ritme, satu kilometer lagi!', transcribing: true }),
-    makeItem(5, 1.2, { sender: 'Kevin', athlete: 'Andre Kusuma', bib: '211', dur: 13, text: 'Ayo Andre, gas terus! Jangan lari kayak orang b3go, anjirrrr, yang kenceng dong!' }),
-    makeItem(4, 2.1, { sender: 'Rina', athlete: 'Bima Prakoso', bib: '142', dur: 14, text: 'Bima! Kamu pasti bisa! Satu station lagi, sled push-nya sikat! Kita semua nungguin di finish line!' }),
-    makeItem(3, 3.6, { sender: 'Tim Kantor Lantai 5', athlete: 'Putri Anjani', bib: '056', dur: 18, text: 'PUTRIII! Semangat ya, dari anak-anak lantai lima! Wall ball-nya kamu jago, jangan kasih kendor!' }),
-    makeItem(2, 5.2, { sender: 'Mama', athlete: 'Rafi Hidayat', bib: '009', dur: 11, text: 'Rafi sayang, mama bangga banget. Pelan-pelan aja yang penting selesai. Mama tunggu di tribun ya.' }),
-    makeItem(1, 7.5, { sender: 'Joko', athlete: 'Liana Hartono', dur: 10, text: 'Liana! Rowing-nya udah setengah jalan, tarik napas, tarik tali, kamu kuat!' }),
-    makeItem(-1, 9, { sender: 'Sinta', athlete: 'Galih Saputra', bib: '095', dur: 12, text: 'Galih, ayo! Sandbag lunges-nya pelan tapi pasti. Bangga sama kamu!', status: 'approved' }),
-    makeItem(-2, 11, { sender: 'Om Heru', athlete: 'Dewi Lestari', bib: '031', dur: 8, text: 'Dewi! Tinggal satu putaran lari lagi, habisin!', status: 'approved' }),
-    makeItem(-3, 12, { sender: 'FitPromo', athlete: 'Semua atlet', dur: 15, text: 'Promo membership gym diskon lima puluh persen, follow akun kami sekarang!', status: 'rejected', reason: 'spam' }),
-    makeItem(-4, 16, { sender: 'Lala', athlete: 'Yoga Pratama', bib: '150', dur: 10, text: 'Yoga! Kamu udah setengah jalan, jangan kendor!', status: 'played', playedAt: '19:31' }),
-    makeItem(-5, 19, { sender: 'Coach Ari', athlete: 'Tim 20FIT Elite', dur: 13, text: 'Tim Elite, ingat latihan kita! Napas, form, gas pol sampai finish!', status: 'played', playedAt: '19:28' }),
-  ]
+  return []
 }
 
 // Word matching: lowercase, leetspeak to letters, collapse repeated letters (anjirrrr -> anjir).
