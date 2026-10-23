@@ -12,6 +12,9 @@ import {
   scanText,
   visibleItems,
 } from './data.js'
+import { readSaved, saveValue } from './storage.js'
+
+const PAGES = ['mod', 'queue', 'hist', 'qr', 'set']
 
 // Local moderation state for the superadmin dashboard. The TODO(supabase) marks where the
 // cheer feed, moderation writes and DJ queue would come from the database.
@@ -22,7 +25,13 @@ export default function useModeration({ lang, liveFeed }) {
   const [maxDur, setMaxDur] = useState(30)
   const [words, setWords] = useState(DEFAULT_WORDS)
   const [wordIn, setWordIn] = useState('')
-  const [page, setPage] = useState('mod')
+  const [page, setPage] = useState(() => {
+    const saved = readSaved('cz-admin-page', 'mod')
+    return PAGES.includes(saved) ? saved : 'mod'
+  })
+  useEffect(() => {
+    saveValue('cz-admin-page', page)
+  }, [page])
   const [tab, setTab] = useState('pending')
   const [q, setQ] = useState('')
   const [focus, setFocus] = useState(null)
