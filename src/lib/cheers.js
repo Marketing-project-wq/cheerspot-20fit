@@ -29,3 +29,16 @@ export async function submitCheer({ blob, senderName, athleteName, durationSec }
   })
   if (error) throw error
 }
+
+// Cheers from the last hour, newest first. Anonymous reads are limited to that window by RLS.
+export async function fetchRecentCheers() {
+  if (!supabase) return null
+  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const { data, error } = await supabase
+    .from('cheerspot_cheers')
+    .select('id, created_at, sender_name, athlete_name, duration_sec, audio_path, status, transcript')
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+  if (error) return null
+  return data
+}

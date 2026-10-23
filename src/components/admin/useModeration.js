@@ -13,6 +13,24 @@ import {
   visibleItems,
 } from './data.js'
 import { readSaved, saveValue } from './storage.js'
+import { fetchRecentCheers } from '../../lib/cheers.js'
+
+const POLL_MS = 15000
+
+// Turns a cheerspot_cheers row into the shape the moderation UI uses.
+const fromRow = row => ({
+  id: row.id,
+  ts: Date.parse(row.created_at),
+  sender: row.sender_name,
+  athlete: row.athlete_name,
+  dur: row.duration_sec,
+  text: row.transcript || '',
+  audioPath: row.audio_path,
+  status: row.status,
+  transcribing: false,
+  isNew: false,
+  bib: '',
+})
 
 const PAGES = ['mod', 'queue', 'hist', 'qr', 'set']
 
@@ -45,6 +63,30 @@ export default function useModeration({ lang, liveFeed }) {
   useEffect(() => {
     saveValue('cz-admin-page', page)
   }, [page])
+
+  // Pull the last hour of cheers from Supabase. Local status changes win over the server copy
+  // until approve and reject are saved to the database.
+  useEffect(() => {
+    let alive = true
+    const load = async () => {
+      const rows = await fetchRecentCheers()
+      if (!alive || !rows) return
+      setItems(prev => {
+        const local = new Map(prev.map(x => [x.id, x]))
+        return rows.map(row => {
+          const item = fromRow(row)
+          const kept = local.get(item.id)
+          return kept ? { ...item, status: kept.status, reason: kept.reason, playedAt: kept.playedAt } : item
+        })
+      })
+    }
+    load()
+    const t = setInterval(load, POLL_MS)
+    return () => {
+      alive = false
+      clearInterval(t)
+    }
+  }, [])
   const [tab, setTab] = useState('pending')
   const [q, setQ] = useState('')
   const [focus, setFocus] = useState(null)
