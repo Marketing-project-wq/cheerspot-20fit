@@ -16,14 +16,36 @@ export default function SettingsPanel({ m, lang }) {
             <span className="adm-settings__title">{S.evName}</span>
             <span className="adm-settings__sub">{S.evSub}</span>
           </div>
-          <input
-            type="text"
-            className="adm-input-plain"
-            aria-label={S.evName}
-            value={m.eventName}
-            placeholder={S.evPh}
-            onChange={e => m.setEventName(e.target.value)}
-          />
+          <div className="adm-event-pick">
+            <select
+              className="adm-input-plain"
+              aria-label={S.evName}
+              value={m.eventName}
+              onChange={e => m.setEventName(e.target.value)}
+            >
+              {m.events.map(name => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <div className="adm-add">
+              <input
+                type="text"
+                className="adm-input-plain"
+                aria-label={S.evAdd}
+                value={m.eventIn}
+                placeholder={S.evPh}
+                onChange={e => m.setEventIn(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') m.addEvent()
+                }}
+              />
+              <button type="button" className="adm-btn-dark-sm" onClick={m.addEvent}>
+                {S.evAdd}
+              </button>
+            </div>
+          </div>
         </div>
 
         {TOGGLES.map(t => {

@@ -21,7 +21,20 @@ const PAGES = ['mod', 'queue', 'hist', 'qr', 'set']
 export default function useModeration({ lang, liveFeed }) {
   const [items, setItems] = useState(createInitialItems)
   const [settings, setSettings] = useState(DEFAULT_SETTINGS)
-  const [eventName, setEventName] = useState(DEFAULT_EVENT)
+  // Events the admin has entered. The active one drives the QR link. Kept per tab across refresh.
+  const [events, setEvents] = useState(() => {
+    const saved = readSaved('cz-admin-events', null)
+    return Array.isArray(saved) && saved.length ? saved : [DEFAULT_EVENT]
+  })
+  const [eventName, setEventName] = useState(() => {
+    const saved = readSaved('cz-admin-event', DEFAULT_EVENT)
+    return events.includes(saved) ? saved : events[0]
+  })
+  const [eventIn, setEventIn] = useState('')
+  useEffect(() => {
+    saveValue('cz-admin-events', events)
+    saveValue('cz-admin-event', eventName)
+  }, [events, eventName])
   const [maxDur, setMaxDur] = useState(30)
   const [words, setWords] = useState(DEFAULT_WORDS)
   const [wordIn, setWordIn] = useState('')
@@ -196,6 +209,15 @@ export default function useModeration({ lang, liveFeed }) {
 
   const removeWord = w => setWords(list => list.filter(x => x !== w))
 
+  // Adds the typed event to the list and makes it the active one, which updates the QR.
+  const addEvent = () => {
+    const name = eventIn.trim()
+    if (!name) return
+    setEvents(list => (list.includes(name) ? list : [...list, name]))
+    setEventName(name)
+    setEventIn('')
+  }
+
   const copyLink = () => {
     try {
       navigator.clipboard?.writeText(cheerUrl(eventName))?.catch(() => {})
@@ -252,8 +274,12 @@ export default function useModeration({ lang, liveFeed }) {
   return {
     items,
     settings,
+    events,
     eventName,
     setEventName,
+    eventIn,
+    setEventIn,
+    addEvent,
     maxDur,
     setMaxDur,
     words,

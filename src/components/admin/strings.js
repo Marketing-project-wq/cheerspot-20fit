@@ -66,6 +66,7 @@ const COPY = {
   settings: ['Pengaturan', 'Settings'],
   setSub: ['Berlaku untuk semua admin di event ini.', 'Applies to all admins for this event.'],
   evName: ['Nama event', 'Event name'],
+  evAdd: ['Tambah event', 'Add event'],
   evSub: ['Tampil di halaman Cheer, DJ Booth, dan poster QR.', 'Shown on the Cheer page, DJ Booth and QR poster.'],
   evPh: ['mis. HYROX Sportfest Vol.3', 'e.g. HYROX Sportfest Vol.3'],
   maxDur: ['Durasi maksimal rekaman', 'Max recording length'],

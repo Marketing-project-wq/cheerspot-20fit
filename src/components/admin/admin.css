@@ -1661,3 +1661,14 @@
     padding: 20px 20px 110px;
   }
 }
+
+.adm-event-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 360px;
+}
+.adm-event-pick select.adm-input-plain {
+  width: 100%;
+}
