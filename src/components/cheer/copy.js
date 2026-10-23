@@ -20,10 +20,6 @@ export const COPY = {
   send: { id: 'KIRIM', en: 'SEND' },
   sending: { id: 'Mengirim cheer…', en: 'Sending cheer…' },
   dontClose: { id: 'Jangan tutup halaman ini dulu ya.', en: 'Don't close this page yet.' },
-  notif: { id: 'NOTIFIKASI DARI PANITIA', en: 'NOTICE FROM THE ORGANIZERS' },
-  reason: { id: 'ALASAN', en: 'REASON' },
-  forLbl: { id: 'Untuk', en: 'For' },
-  redoBig: { id: 'REKAM ULANG', en: 'RECORD AGAIN' },
   allow: { id: 'IZINKAN MIKROFON', en: 'ALLOW MICROPHONE' },
   still: { id: 'MASIH DIBLOKIR?', en: 'STILL BLOCKED?' },
   ios1: { id: 'Tap ikon aA di kiri address bar', en: 'Tap the aA icon on the left of the address bar' },
@@ -64,30 +60,6 @@ export const ERR = {
   insecure: {
     id: ['Koneksi tidak aman', 'Rekam suara hanya bisa lewat link https://. Scan ulang QR di venue.'],
     en: ['Connection not secure', 'Voice recording only works over https://. Scan the QR at the venue again.'],
-  },
-}
-
-// Moderation rejection copy (reachable only once the backend sends a rejection reason)
-export const REJ = {
-  kasar: {
-    id: ['Ada kata kasar atau tidak pantas', 'Cheer diputar di depan semua penonton, termasuk anak-anak. Rekam ulang dengan kata-kata yang positif ya!'],
-    en: ['Contains offensive or inappropriate words', 'Cheers play in front of everyone, kids included. Record again with positive words!'],
-  },
-  audio: {
-    id: ['Suara kurang jelas', 'Suara di arena cukup bising. Coba rekam lebih dekat ke mikrofon dan bicara lebih pelan.'],
-    en: ['Audio not clear', 'The arena is loud. Try recording closer to the mic and speak a bit slower.'],
-  },
-  spam: {
-    id: ['Berisi promosi', 'Cheer Zone khusus untuk mendukung atlet. Promosi atau iklan tidak bisa diputar.'],
-    en: ['Contains promotion', 'Cheer Zone is only for supporting athletes. Promotions or ads can’t be played.'],
-  },
-  atlet: {
-    id: ['Nama atlet tidak ditemukan', 'Cek lagi ejaan nama atlet sesuai daftar peserta, lalu kirim ulang cheer kamu.'],
-    en: ['Athlete name not found', 'Double-check the spelling against the participant list, then send your cheer again.'],
-  },
-  expired: {
-    id: ['Waktu putar sudah lewat', 'Cheer kamu belum sempat diputar dalam 1 jam karena antrean penuh. Kirim cheer baru biar tetap kedengeran di arena!'],
-    en: ['Play window has passed', 'Your cheer didn't get played within 1 hour because the queue was full. Send a new one so it's heard in the arena!'],
   },
 }
 
