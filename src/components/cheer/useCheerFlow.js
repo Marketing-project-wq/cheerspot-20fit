@@ -164,7 +164,8 @@ export default function useCheerFlow({ lang = 'id' } = {}) {
     setErrKind(kind)
     if (kind === 'denied') setTries((n) => n + 1)
     go('error')
-    watch()
+    // Only a mic permission can be fixed while the page is open, so only watch for that
+    if (kind === 'denied') watch()
   }
 
   const startLevels = (stream) => {
