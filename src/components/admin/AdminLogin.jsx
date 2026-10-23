@@ -7,12 +7,10 @@ import { LangSwitch, Logo } from './shared.jsx'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-// Role comes from ?role= first, then the account name, then the role picked on screen.
-function resolveRole(email, picked, urlRole) {
+// Role comes from ?role= first, then the role picked on screen. The username never decides it,
+// so "admin" as a username still lands in moderation when Superadmin is selected.
+function resolveRole(picked, urlRole) {
   if (urlRole === 'admin' || urlRole === 'super') return urlRole
-  const acct = email.trim().toLowerCase()
-  if (/^(super|superadmin)\b|^super[@._-]/.test(acct)) return 'super'
-  if (/^(admin|dj)\b|^(admin|dj)[@._-]/.test(acct)) return 'admin'
   return picked
 }
 
@@ -52,7 +50,7 @@ export default function AdminLogin({ onSuccess }) {
     timer.current = setTimeout(() => {
       // Local stand-in: any input passes once the password is at least 6 characters, as the design's flow does.
       if (pass.length < 6) return fail('errWrong')
-      onSuccess(resolveRole(email, picked, params.get('role')))
+      onSuccess(resolveRole(picked, params.get('role')))
     }, 1100)
   }
 
