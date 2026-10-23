@@ -6,7 +6,7 @@ import { Logo } from './shared.jsx'
 
 export default function QrPanel({ lang, eventName, copied, onCopy }) {
   const S = STRINGS[lang] || STRINGS.id
-  const url = cheerUrl()
+  const url = cheerUrl(eventName)
 
   // Real QR matrix for the cheer link; recomputed only when the link changes.
   const qr = useMemo(() => QRCode.create(url, { errorCorrectionLevel: 'M' }), [url])

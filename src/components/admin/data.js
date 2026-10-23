@@ -133,5 +133,14 @@ export function statusInfo(x, now, lang) {
 }
 
 // 25x25 placeholder QR matrix (true = dark module), as in the design.
-// The page spectators open from the QR. Uses the current domain, so it works on Railway and on cheerspot.20fit.id.
-export const cheerUrl = () => `${window.location.origin}/cheer`
+// URL-safe form of the event name, e.g. "HYROX Sportfest Vol.3" -> "hyrox-sportfest-vol-3".
+export const eventSlug = name =>
+  name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'event'
+
+// The page spectators open from the QR, tagged with the active event. Uses the current domain,
+// so it works on Railway and on cheerspot.20fit.id.
+export const cheerUrl = eventName => `${window.location.origin}/cheer?event=${eventSlug(eventName)}`

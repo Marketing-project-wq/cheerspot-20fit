@@ -62,7 +62,7 @@ const COPY = {
   copied: ['Tersalin', 'Copied'],
   dl: ['Unduh PNG', 'Download PNG'],
   print: ['Cetak poster A4', 'Print A4 poster'],
-  qrNote: ['QR di samping adalah contoh. Kode asli dibuat dari link halaman Cheer.', 'This QR is a sample. The real code is generated from the Cheer page link.'],
+  qrNote: ['QR ini berubah otomatis mengikuti nama event di Pengaturan.', 'This QR updates automatically with the event name in Settings.'],
   settings: ['Pengaturan', 'Settings'],
   setSub: ['Berlaku untuk semua admin di event ini.', 'Applies to all admins for this event.'],
   evName: ['Nama event', 'Event name'],
