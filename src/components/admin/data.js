@@ -133,24 +133,5 @@ export function statusInfo(x, now, lang) {
 }
 
 // 25x25 placeholder QR matrix (true = dark module), as in the design.
-export const QR_CELLS = (() => {
-  const N = 25
-  const finder = (x, y, ox, oy) => {
-    const dx = x - ox
-    const dy = y - oy
-    if (dx < 0 || dy < 0 || dx > 6 || dy > 6) return null
-    return dx === 0 || dy === 0 || dx === 6 || dy === 6 || (dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4)
-  }
-  const out = []
-  for (let y = 0; y < N; y++) {
-    for (let x = 0; x < N; x++) {
-      let v = finder(x, y, 0, 0) ?? finder(x, y, 18, 0) ?? finder(x, y, 0, 18)
-      if (v === null) {
-        const sep = (x < 8 && y < 8) || (x > 16 && y < 8) || (x < 8 && y > 16)
-        v = sep ? false : (x * 7 + y * 13 + x * y * 3) % 5 < 2
-      }
-      out.push(v)
-    }
-  }
-  return out
-})()
+// The page spectators open from the QR. Uses the current domain, so it works on Railway and on cheerspot.20fit.id.
+export const cheerUrl = () => `${window.location.origin}/cheer`

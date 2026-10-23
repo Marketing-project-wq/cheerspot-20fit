@@ -1274,7 +1274,7 @@
   padding: 14px;
   border-radius: 12px;
   display: grid;
-  grid-template-columns: repeat(25, min(8px, 2.6vw));
+  grid-template-columns: repeat(var(--qr-n, 25), min(8px, 2.6vw));
   grid-auto-rows: min(8px, 2.6vw);
 }
 .adm-qr__cell {

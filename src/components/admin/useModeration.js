@@ -7,6 +7,7 @@ import {
   POOL,
   createInitialItems,
   focusIdOf,
+  cheerUrl,
   makeItem,
   scanText,
   visibleItems,
@@ -188,7 +189,7 @@ export default function useModeration({ lang, liveFeed }) {
 
   const copyLink = () => {
     try {
-      navigator.clipboard?.writeText('https://cheer.20fit.id/hyrox-vol3')?.catch(() => {})
+      navigator.clipboard?.writeText(cheerUrl())?.catch(() => {})
     } catch {
       // Clipboard can be blocked; the label still confirms the click.
     }
