@@ -100,8 +100,6 @@ export default function useModeration({ lang, liveFeed }) {
       })
       set.clear()
     }
-    // Timers are created once per mount; the functions they call only use refs and setters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveFeed])
 
   const stopPlay = () => {
@@ -240,8 +238,6 @@ export default function useModeration({ lang, liveFeed }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-    // Handler reads only refs and setters, so it is attached once.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return {

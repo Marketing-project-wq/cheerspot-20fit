@@ -1,6 +1,5 @@
 import { NAVS, pick, STRINGS } from './strings.js'
-import { LogoutIcon } from './icons.jsx'
-import { Svg } from './icons.jsx'
+import { LogoutIcon, Svg } from './icons.jsx'
 import { LangSwitch, Logo } from './shared.jsx'
 
 function initialsOf(name) {

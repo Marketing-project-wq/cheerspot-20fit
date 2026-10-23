@@ -1,16 +1,33 @@
-import { useEffect } from 'react'
-import { useT } from '../lib/i18n.jsx'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import AdminLogin from '../components/admin/AdminLogin.jsx'
+import ModerationDashboard from '../components/admin/ModerationDashboard.jsx'
+import '../components/admin/admin.css'
 
 export default function Admin() {
-  const { t } = useT()
+  const navigate = useNavigate()
+  const [session, setSession] = useState(null)
 
   useEffect(() => {
     document.title = 'Admin · CheerSpot'
   }, [])
 
+  // The design sends the admin role to the DJ Booth and the superadmin role to moderation.
+  const handleLogin = role => {
+    if (role === 'admin') {
+      navigate('/dj')
+      return
+    }
+    setSession({ role })
+  }
+
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4 text-center">
-      <p className="text-neutral-500">{t('placeholder.note')}</p>
-    </main>
+    <div className="adm-root">
+      {session ? (
+        <ModerationDashboard adminName="Admin 20FIT" liveFeed onLogout={() => setSession(null)} />
+      ) : (
+        <AdminLogin onSuccess={handleLogin} />
+      )}
+    </div>
   )
 }
