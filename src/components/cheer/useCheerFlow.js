@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_SEC, pickMime, platformOf } from './format.js'
+import { submitCheer } from '../../lib/cheers.js'
 
 // Flow states: idle -> recording -> preview -> uploading -> success
 // Failures go to error (retry or auto-resume when mic access is granted).
@@ -11,6 +12,7 @@ export default function useCheerFlow({ lang = 'id' } = {}) {
   const [left, setLeft] = useState(MAX_SEC)
   const [dur, setDur] = useState(MAX_SEC)
   const [prog, setProg] = useState(0)
+  const [uploadState, setUploadState] = useState('pending')
   const [playing, setPlaying] = useState(false)
   const [pos, setPos] = useState(0)
   const [heard, setHeard] = useState(false)
@@ -362,10 +364,14 @@ export default function useCheerFlow({ lang = 'id' } = {}) {
       setErr(en ? 'Fill in the athlete name first.' : 'Isi nama atlet dulu, biar DJ tahu cheer ini buat siapa.')
       return
     }
+    if (!blobRef.current) return
     if (audioRef.current) audioRef.current.pause()
-    // TODO(supabase): upload blobRef.current and insert the cheer row here. Progress is simulated for now.
     setProg(0)
+    setUploadState('pending')
     go('uploading')
+    submitCheer({ blob: blobRef.current, senderName: name, athleteName: athlete, durationSec: dur })
+      .then(() => setUploadState('done'))
+      .catch(() => setUploadState('error'))
   }
 
   const again = () => {
@@ -406,17 +412,23 @@ export default function useCheerFlow({ lang = 'id' } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s, left])
 
-  // Upload progress is simulated until the backend exists
+  // Progress runs up to 95% while the upload is in flight, then finishes once it succeeds.
   useEffect(() => {
     if (s !== 'uploading') return
-    if (prog >= 100) {
+    if (uploadState === 'error') {
+      setErr(en ? 'Upload failed. Try sending again.' : 'Upload gagal. Coba kirim lagi ya.')
+      go('preview')
+      return
+    }
+    if (prog >= 100 && uploadState === 'done') {
       go('success')
       return
     }
-    const id = setTimeout(() => setProg((p) => Math.min(100, p + 3)), 70)
+    const cap = uploadState === 'done' ? 100 : 95
+    const id = setTimeout(() => setProg((p) => Math.min(cap, p + 3)), 70)
     return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s, prog])
+  }, [s, prog, uploadState])
 
   return {
     s,

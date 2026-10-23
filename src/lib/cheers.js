@@ -1,0 +1,31 @@
+import { supabase } from './supabase.js'
+
+const BUCKET = 'cheerspot-audio'
+
+const EXT = { 'audio/mp4': 'm4a', 'audio/aac': 'm4a', 'audio/webm': 'webm', 'audio/ogg': 'ogg' }
+
+function extOf(type) {
+  const base = (type || '').split(';')[0].trim()
+  return EXT[base] || 'audio'
+}
+
+// Uploads the recorded voice note and inserts its row as pending. No account needed: the
+// database policies only let anonymous visitors insert pending cheers and read recent ones.
+export async function submitCheer({ blob, senderName, athleteName, durationSec }) {
+  if (!supabase) throw new Error('Supabase is not configured')
+
+  const path = `${crypto.randomUUID()}.${extOf(blob.type)}`
+
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, blob, { contentType: blob.type || 'audio/mp4' })
+  if (uploadError) throw uploadError
+
+  const { error } = await supabase.from('cheerspot_cheers').insert({
+    sender_name: senderName.trim() || 'Penonton',
+    athlete_name: athleteName.trim(),
+    duration_sec: Math.max(1, Math.round(durationSec)),
+    audio_path: path,
+  })
+  if (error) throw error
+}
