@@ -19,7 +19,7 @@ export const COPY = {
   redo: { id: 'Rekam ulang', en: 'Re-record' },
   send: { id: 'KIRIM', en: 'SEND' },
   sending: { id: 'Mengirim cheer…', en: 'Sending cheer…' },
-  dontClose: { id: 'Jangan tutup halaman ini dulu ya.', en: 'Don't close this page yet.' },
+  dontClose: { id: 'Jangan tutup halaman ini dulu ya.', en: "Don't close this page yet." },
   allow: { id: 'IZINKAN MIKROFON', en: 'ALLOW MICROPHONE' },
   still: { id: 'MASIH DIBLOKIR?', en: 'STILL BLOCKED?' },
   ios1: { id: 'Tap ikon aA di kiri address bar', en: 'Tap the aA icon on the left of the address bar' },
@@ -28,7 +28,7 @@ export const COPY = {
   and2: { id: 'Buka Izin, lalu aktifkan Mikrofon', en: 'Open Permissions, then turn on Microphone' },
   oth1: { id: 'Klik ikon gembok di samping alamat web', en: 'Click the lock icon next to the web address' },
   oth2: { id: 'Ubah izin Mikrofon ke Izinkan', en: 'Set Microphone permission to Allow' },
-  step3: { id: 'Kembali ke halaman ini. Kami deteksi otomatis begitu mikrofon diizinkan.', en: 'Come back to this page. We'll detect it automatically once the mic is allowed.' },
+  step3: { id: 'Kembali ke halaman ini. Kami deteksi otomatis begitu mikrofon diizinkan.', en: "Come back to this page. We'll detect it automatically once the mic is allowed." },
   privacy: { id: 'Suara kamu akan dicek dulu sebelum diputar di area publik.', en: 'Your voice will be checked before it plays in public.' },
   watchDenied: { id: 'Menunggu izin mikrofon… otomatis lanjut begitu diizinkan', en: 'Waiting for mic permission… continues automatically once allowed' },
   watchOther: { id: 'Halaman ini akan lanjut otomatis setelah masalahnya beres', en: 'This page continues automatically once fixed' },
@@ -68,7 +68,7 @@ export const SUCCESS_VARIANTS = {
   1: {
     icon: 'mic',
     id: { t: 'Cheer terkirim! 🎤', b: 'Selamat, kamu resmi jadi motivator dadakan hari ini. {n} mungkin lagi ngos-ngosan, tapi berkat kamu, setidaknya dia ngos-ngosan dengan semangat!', c: 'Teriak lagi!' },
-    en: { t: 'Cheer sent! 🎤', b: 'Congrats, you're officially today's surprise motivator. {n} might be gasping for air, but thanks to you, at least they're gasping with spirit!', c: 'Shout again!' },
+    en: { t: 'Cheer sent! 🎤', b: "Congrats, you're officially today's surprise motivator. {n} might be gasping for air, but thanks to you, at least they're gasping with spirit!", c: 'Shout again!' },
   },
   2: {
     icon: 'cup',
@@ -78,7 +78,7 @@ export const SUCCESS_VARIANTS = {
   3: {
     icon: 'sled',
     id: { t: 'Suaramu sudah meluncur! 🛷', b: 'Lebih cepat dari sled push {n} di stasiun terakhir, tentunya. Semoga cheer kamu bikin dia lupa kalau kakinya udah kayak jeli.', c: 'Semangatin korban lainnya' },
-    en: { t: 'Your voice is on the move! 🛷', b: 'Faster than {n}'s sled push at the last station, obviously. Hopefully your cheer makes them forget their legs have turned to jelly.', c: 'Hype up another victim' },
+    en: { t: 'Your voice is on the move! 🛷', b: "Faster than {n}'s sled push at the last station, obviously. Hopefully your cheer makes them forget their legs have turned to jelly.", c: 'Hype up another victim' },
   },
   4: {
     icon: 'ball',
@@ -88,7 +88,7 @@ export const SUCCESS_VARIANTS = {
   5: {
     icon: 'medal',
     id: { t: 'Cheer terkirim! 🏆', b: 'Atletnya yang lari, kamu yang teriak. Tim yang sempurna. Kalau ada medali buat supporter terbaik, kamu udah masuk nominasi.', c: 'Teriak lagi!' },
-    en: { t: 'Cheer sent! 🏆', b: 'They run, you shout. The perfect team. If there were a medal for best supporter, you'd already be nominated.', c: 'Shout again!' },
+    en: { t: 'Cheer sent! 🏆', b: "They run, you shout. The perfect team. If there were a medal for best supporter, you'd already be nominated.", c: 'Shout again!' },
   },
 }
 
