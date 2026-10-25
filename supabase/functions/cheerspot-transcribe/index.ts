@@ -13,7 +13,21 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(binary)
 }
 
+// The browser calls this from the web app, so it must answer the CORS preflight (OPTIONS).
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+  const res = await handle(req)
+  Object.entries(CORS).forEach(([key, value]) => res.headers.set(key, value))
+  return res
+})
+
+async function handle(req: Request): Promise<Response> {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
   const { id } = await req.json().catch(() => ({ id: null }))
@@ -70,4 +84,4 @@ Deno.serve(async (req) => {
   if (updateError) return new Response('Could not save transcript', { status: 500 })
 
   return Response.json({ ok: true })
-})
+}
