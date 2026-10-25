@@ -21,13 +21,20 @@ export async function submitCheer({ blob, senderName, athleteName, durationSec }
     .upload(path, blob, { contentType: blob.type || 'audio/mp4' })
   if (uploadError) throw uploadError
 
-  const { error } = await supabase.from('cheerspot_cheers').insert({
-    sender_name: senderName.trim() || 'Penonton',
-    athlete_name: athleteName.trim(),
-    duration_sec: Math.max(1, Math.round(durationSec)),
-    audio_path: path,
-  })
+  const { data, error } = await supabase
+    .from('cheerspot_cheers')
+    .insert({
+      sender_name: senderName.trim() || 'Penonton',
+      athlete_name: athleteName.trim(),
+      duration_sec: Math.max(1, Math.round(durationSec)),
+      audio_path: path,
+    })
+    .select('id')
+    .single()
   if (error) throw error
+
+  // Transcription runs in the background. If it fails, the cheer is still sent and the admin can listen.
+  supabase.functions.invoke('cheerspot-transcribe', { body: { id: data.id } })
 }
 
 // Cheers from the last hour, newest first. Anonymous reads are limited to that window by RLS.
