@@ -13,7 +13,7 @@ import {
   visibleItems,
 } from './data.js'
 import { readSaved, saveValue } from './storage.js'
-import { fetchRecentCheers } from '../../lib/cheers.js'
+import { fetchRecentCheers, getAudioUrl, updateCheerStatus } from '../../lib/cheers.js'
 
 const POLL_MS = 15000
 
@@ -187,6 +187,32 @@ export default function useModeration({ lang, liveFeed }) {
     return () => clearInterval(t)
   }, [playId])
 
+  // Plays the real voice note through a short-lived link. The timer above keeps the progress bar moving.
+  const audioRef = useRef(null)
+  useEffect(() => {
+    if (playId == null) return undefined
+    const it = items.find(x => x.id === playId)
+    if (!it || !it.audioPath) return undefined
+    let cancelled = false
+    getAudioUrl(it.audioPath)
+      .then(url => {
+        if (cancelled) return
+        const audio = new Audio(url)
+        audioRef.current = audio
+        audio.play().catch(() => {})
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
+    }
+    // Only a new play target should restart audio; list updates must not.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playId])
+
   useEffect(() => {
     if (playId == null) return
     const it = items.find(x => x.id === playId)
@@ -215,6 +241,10 @@ export default function useModeration({ lang, liveFeed }) {
     const nxt = vis[i + 1] || vis[i - 1]
     if (L.playId === id) stopPlay()
     patch(id, { status, reason: reason || null })
+    updateCheerStatus(id, status, reason || null).catch(() => {
+      patch(id, { status: 'pending', reason: null })
+      setToast({ id, prev: 'pending', msg: pick(['Gagal menyimpan. Coba lagi.', 'Could not save. Try again.'], L.lang), color: '#BF0000' })
+    })
     setPicking(null)
     const S = STRINGS[L.lang] || STRINGS.id
     let msg
@@ -232,6 +262,7 @@ export default function useModeration({ lang, liveFeed }) {
     const t = live.current.toast
     if (!t) return
     patch(t.id, { status: t.prev, reason: null })
+    updateCheerStatus(t.id, t.prev, null).catch(() => {})
     setToast(null)
     setFocus(t.id)
   }

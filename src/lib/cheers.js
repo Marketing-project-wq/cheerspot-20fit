@@ -43,9 +43,27 @@ export async function fetchRecentCheers() {
   const since = new Date(Date.now() - 60 * 60 * 1000).toISOString()
   const { data, error } = await supabase
     .from('cheerspot_cheers')
-    .select('id, created_at, sender_name, athlete_name, duration_sec, audio_path, status, transcript')
+    .select('id, created_at, sender_name, athlete_name, duration_sec, audio_path, status, transcript, reason')
     .gte('created_at', since)
     .order('created_at', { ascending: false })
   if (error) return null
   return data
+}
+
+// Staff only: saves the moderation decision. Reject reasons are stored with the row.
+export async function updateCheerStatus(id, status, reason = null) {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const { error } = await supabase
+    .from('cheerspot_cheers')
+    .update({ status, reason })
+    .eq('id', id)
+  if (error) throw error
+}
+
+// Staff only: a short-lived link to play the recorded voice note.
+export async function getAudioUrl(path) {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const { data, error } = await supabase.storage.from('cheerspot-audio').createSignedUrl(path, 600)
+  if (error) throw error
+  return data.signedUrl
 }

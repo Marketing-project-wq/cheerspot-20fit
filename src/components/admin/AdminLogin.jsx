@@ -1,24 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
 import { useT } from '../../lib/i18n.jsx'
-import { LOGIN_ROLES, STRINGS, pick } from './strings.js'
+import { signIn, signOut, staffRole } from '../../lib/auth.js'
+import { STRINGS, pick } from './strings.js'
 import { AlertIcon, ArrowIcon, CheckIcon, EyeIcon, EyeOffIcon, LockIcon } from './icons.jsx'
 import { LangSwitch, Logo } from './shared.jsx'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-// Role comes from ?role= first, then the role picked on screen. The username never decides it,
-// so "admin" as a username still lands in moderation when Superadmin is selected.
-function resolveRole(picked, urlRole) {
-  if (urlRole === 'admin' || urlRole === 'super') return urlRole
-  return picked
-}
-
 export default function AdminLogin({ onSuccess }) {
   const { lang, setLang } = useT()
   const S = STRINGS[lang] || STRINGS.id
-  const [params] = useSearchParams()
-  const [picked, setPicked] = useState('super')
   const [email, setEmail] = useState('')
   const [pass, setPass] = useState('')
   const [showPass, setShowPass] = useState(false)
@@ -27,17 +18,13 @@ export default function AdminLogin({ onSuccess }) {
   const [err, setErr] = useState(null)
   const [info, setInfo] = useState(null)
   const [shake, setShake] = useState(false)
-  const timer = useRef(null)
-
-  useEffect(() => () => clearTimeout(timer.current), [])
-
   const fail = key => {
     setErr(key)
     setLoading(false)
     setShake(true)
   }
 
-  const submit = e => {
+  const submit = async e => {
     e.preventDefault()
     if (loading) return
     if (!email.trim() || !pass) return fail('errEmpty')
@@ -45,13 +32,18 @@ export default function AdminLogin({ onSuccess }) {
     setLoading(true)
     setErr(null)
     setInfo(null)
-    clearTimeout(timer.current)
-    // TODO(supabase): replace this local check with supabase.auth.signInWithPassword and read the role from the staff profile.
-    timer.current = setTimeout(() => {
-      // Local stand-in: any input passes once the password is at least 6 characters, as the design's flow does.
-      if (pass.length < 6) return fail('errWrong')
-      onSuccess(resolveRole(picked, params.get('role')))
-    }, 1100)
+    try {
+      const session = await signIn(email.trim(), pass)
+      const role = staffRole(session)
+      // Accounts without a staff role can sign in to Supabase but must not see moderation.
+      if (!role) {
+        await signOut()
+        return fail('errWrong')
+      }
+      onSuccess(role)
+    } catch {
+      fail('errWrong')
+    }
   }
 
   const inputErr = err ? ' is-error' : ''
@@ -76,29 +68,6 @@ export default function AdminLogin({ onSuccess }) {
             <div className="adm-login__heading">
               <h1 className="adm-login__title">{S.title}</h1>
               <p className="adm-login__sub">{S.sub}</p>
-            </div>
-
-            <div className="adm-field">
-              <span className="adm-field__label" id="adm-role-lbl">
-                {S.roleLbl}
-              </span>
-              <div className="adm-roles" role="group" aria-labelledby="adm-role-lbl">
-                {LOGIN_ROLES.map(r => {
-                  const on = picked === r.key
-                  return (
-                    <button
-                      key={r.key}
-                      type="button"
-                      aria-pressed={on}
-                      className={`adm-role${on ? ' is-on' : ''}`}
-                      onClick={() => setPicked(r.key)}
-                    >
-                      <strong>{pick(r.label, lang)}</strong>
-                      <span>{pick(r.desc, lang)}</span>
-                    </button>
-                  )
-                })}
-              </div>
             </div>
 
             <div className="adm-field">

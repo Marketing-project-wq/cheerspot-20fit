@@ -2,38 +2,49 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AdminLogin from '../components/admin/AdminLogin.jsx'
 import ModerationDashboard from '../components/admin/ModerationDashboard.jsx'
-import { readSaved, saveValue } from '../components/admin/storage.js'
+import { getSession, onSessionChange, signOut, staffRole } from '../lib/auth.js'
 import '../components/admin/admin.css'
-
-const SESSION_KEY = 'cz-admin-session'
 
 export default function Admin() {
   const navigate = useNavigate()
-  // Restored from sessionStorage so a refresh keeps the superadmin signed in.
-  const [session, setSession] = useState(() => readSaved(SESSION_KEY, null))
+  // undefined = still checking the saved session, null = signed out, object = staff session.
+  const [role, setRole] = useState(undefined)
 
   useEffect(() => {
     document.title = 'Admin · CheerSpot'
   }, [])
 
+  useEffect(() => {
+    let alive = true
+    getSession().then(session => {
+      if (alive) setRole(staffRole(session))
+    })
+    const unsubscribe = onSessionChange(session => setRole(staffRole(session)))
+    return () => {
+      alive = false
+      unsubscribe()
+    }
+  }, [])
+
   // The design sends the admin role to the DJ Booth and the superadmin role to moderation.
-  const handleLogin = role => {
-    if (role === 'admin') {
+  const handleLogin = nextRole => {
+    if (nextRole === 'admin') {
       navigate('/dj')
       return
     }
-    setSession({ role })
-    saveValue(SESSION_KEY, { role })
+    setRole(nextRole)
   }
 
-  const handleLogout = () => {
-    setSession(null)
-    saveValue(SESSION_KEY, null)
+  const handleLogout = async () => {
+    await signOut()
+    setRole(null)
   }
+
+  if (role === undefined) return null
 
   return (
     <div className="adm-root">
-      {session ? (
+      {role ? (
         <ModerationDashboard adminName="Admin 20FIT" onLogout={handleLogout} />
       ) : (
         <AdminLogin onSuccess={handleLogin} />
