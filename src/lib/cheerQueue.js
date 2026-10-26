@@ -119,7 +119,8 @@ export async function markPlayed(id) {
   playedLocally.set(id, playedAt)
   items = applyOrder(items.map(item => (item.id === id ? { ...item, status: 'played', playedAt } : item)))
   emit()
-  const { error } = await supabase.from('cheerspot_cheers').update({ status: 'played' }).eq('id', id)
+  // DJ accounts cannot update rows directly; this function only moves approved to played.
+  const { error } = await supabase.rpc('cheerspot_mark_played', { p_id: id })
   if (error) throw error
 }
 
