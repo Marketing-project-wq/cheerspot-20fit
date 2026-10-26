@@ -21,9 +21,9 @@ export default function CheerNowPlaying({ item, label, status, countdown, onPlay
     <section className="booth-panel booth-now" aria-label="Now playing">
       <p className="booth-now__label">{label}</p>
       <h2 className="booth-now__athlete">{item.athlete_name}</h2>
-      <p className="booth-now__bib">Bib {item.athlete_bib}</p>
+      {item.athlete_bib && <p className="booth-now__bib">Bib {item.athlete_bib}</p>}
       <p className="booth-now__sender">From {item.sender_name}</p>
-      <blockquote className="booth-now__transcript">{item.transcript}</blockquote>
+      {item.transcript && <blockquote className="booth-now__transcript">{item.transcript}</blockquote>}
 
       <div
         className="booth-progress"

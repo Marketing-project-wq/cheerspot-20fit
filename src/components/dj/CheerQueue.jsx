@@ -77,7 +77,7 @@ export default function CheerQueue({ items, queuedIds, activeId, onPlayNow, onRe
                 <div className="booth-queue__info">
                   <p className="booth-queue__name">
                     <strong>{item.athlete_name}</strong>
-                    <span className="booth-queue__meta">Bib {item.athlete_bib} · {item.sender_name}</span>
+                    <span className="booth-queue__meta">{item.athlete_bib ? `Bib ${item.athlete_bib} · ` : 'From '}{item.sender_name}</span>
                   </p>
                   <p className="booth-queue__text">{item.transcript}</p>
                   {(playing || queued) && (
@@ -130,7 +130,7 @@ export default function CheerQueue({ items, queuedIds, activeId, onPlayNow, onRe
                 <div className="booth-queue__info">
                   <p className="booth-queue__name">
                     <strong>{item.athlete_name}</strong>
-                    <span className="booth-queue__meta">Bib {item.athlete_bib} · {item.sender_name}</span>
+                    <span className="booth-queue__meta">{item.athlete_bib ? `Bib ${item.athlete_bib} · ` : 'From '}{item.sender_name}</span>
                   </p>
                 </div>
                 <button type="button" className="booth-btn" onClick={() => onReplay(item)}>

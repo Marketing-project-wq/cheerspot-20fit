@@ -86,7 +86,8 @@ export function registerMusicSource(name, adapter) {
   emit()
 }
 
-// Queues a cheer. Handlers: onStart (audio begins), onEnd(reason), onError(err).
+// Queues a cheer. The cheer needs an id and either audio_url or getAudioUrl() (for short-lived links).
+// Handlers: onStart (audio begins), onEnd(reason), onError(err).
 export function playCheer(cheer, handlers = {}) {
   pending.push({ cheer, handlers })
   emit()
@@ -327,7 +328,7 @@ async function runQueue() {
       emit()
       let buffer
       try {
-        buffer = await loadBuffer(job.cheer.audio_url)
+        buffer = await loadBuffer(job.cheer)
       } catch (err) {
         job.handlers.onError?.(err)
         continue
@@ -427,18 +428,21 @@ function positionOf(p) {
   return Math.min(p.buffer.duration, p.offset + elapsed)
 }
 
-async function loadBuffer(url) {
-  if (!bufferCache.has(url)) {
-    const promise = fetch(url)
+// Cached by cheer id, because signed links change on every request.
+async function loadBuffer(cheer) {
+  const key = cheer.id
+  if (!bufferCache.has(key)) {
+    const promise = Promise.resolve(cheer.audio_url || cheer.getAudioUrl())
+      .then(url => fetch(url))
       .then(response => {
         if (!response.ok) throw new Error(`Cheer audio returned ${response.status}`)
         return response.arrayBuffer()
       })
       .then(data => getAudioContext().decodeAudioData(data))
-    bufferCache.set(url, promise)
-    promise.catch(() => bufferCache.delete(url))
+    bufferCache.set(key, promise)
+    promise.catch(() => bufferCache.delete(key))
   }
-  return bufferCache.get(url)
+  return bufferCache.get(key)
 }
 
 function setPhase(phase) {

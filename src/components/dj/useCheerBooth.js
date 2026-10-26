@@ -53,6 +53,8 @@ export default function useCheerBooth() {
   const statusRef = useRef(status)
   const settingsRef = useRef(settings)
   const toastTimer = useRef(null)
+  // Cheers whose audio failed to load. AUTO skips them so one bad file does not repeat forever.
+  const failedIds = useRef(new Set())
 
   useEffect(() => {
     modeRef.current = mode
@@ -76,7 +78,21 @@ export default function useCheerBooth() {
     }
   }, [])
 
-  useEffect(() => subscribeQueue(setItems), [])
+  // A failed poll keeps the last queue on screen. Warn once, then again only after a good poll.
+  useEffect(() => {
+    let warned = false
+    return subscribeQueue(
+      next => {
+        warned = false
+        setItems(next)
+      },
+      () => {
+        if (warned) return
+        warned = true
+        showToast('Could not refresh the cheer queue. Retrying.')
+      },
+    )
+  }, [showToast])
   useEffect(() => subscribeBooth(setStatus), [])
 
   useEffect(() => {
@@ -98,11 +114,14 @@ export default function useCheerBooth() {
     item => {
       playCheer(item, {
         onStart: () => {
-          markPlayed(item.id)
+          markPlayed(item.id).catch(() => showToast(`${item.athlete_name} played, but the status was not saved.`))
           setLastPlayedId(item.id)
         },
         onEnd: () => setNextAt(Date.now() + settingsRef.current.gapSec * 1000),
-        onError: () => showToast(`Audio for ${item.athlete_name} could not load. Skipped.`),
+        onError: () => {
+          failedIds.current.add(item.id)
+          showToast(`Audio for ${item.athlete_name} could not load. Skipped.`)
+        },
       })
     },
     [showToast],
@@ -117,7 +136,9 @@ export default function useCheerBooth() {
       if (modeRef.current !== 'auto') return
       const s = statusRef.current
       if (s.phase === 'cheer' || t < nextAtRef.current) return
-      const next = itemsRef.current.find(item => item.status === 'approved' && !s.queued.includes(item.id))
+      const next = itemsRef.current.find(
+        item => item.status === 'approved' && !s.queued.includes(item.id) && !failedIds.current.has(item.id),
+      )
       if (next) playItem(next)
     }, 500)
     return () => clearInterval(timer)
