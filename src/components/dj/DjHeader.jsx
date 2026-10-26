@@ -1,4 +1,5 @@
 import { hm } from './copy.js'
+import { signOut } from '../../lib/auth.js'
 import { IconSpeaker } from './icons.jsx'
 
 export default function DjHeader({ c, auto, autoLeft, toggleAuto, newCount, vol, setVol, nowTs }) {
@@ -34,6 +35,10 @@ export default function DjHeader({ c, auto, autoLeft, toggleAuto, newCount, vol,
         <span className="dj-vol__txt">{vol}%</span>
       </div>
       <span className="dj-clock">{hm(nowTs)}</span>
+      {/* Signing out clears the staff session; the DJ page then sends the user back to /admin. */}
+      <button type="button" className="dj-auto" onClick={() => signOut()}>
+        <span className="dj-auto__label">{c.logout}</span>
+      </button>
       <div className="dj-user">
         <span className="dj-avatar">AD</span>
         <div className="dj-user__text">

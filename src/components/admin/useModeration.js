@@ -64,7 +64,7 @@ export default function useModeration({ lang, liveFeed }) {
     saveValue('cz-admin-page', page)
   }, [page])
 
-  // Pull the last hour of cheers from Supabase. Local status changes win over the server copy
+  // Pull all cheers from Supabase. Local status changes win over the server copy
   // until approve and reject are saved to the database.
   useEffect(() => {
     let alive = true

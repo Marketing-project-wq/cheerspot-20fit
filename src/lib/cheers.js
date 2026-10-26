@@ -37,14 +37,12 @@ export async function submitCheer({ blob, senderName, athleteName, durationSec }
   supabase.functions.invoke('cheerspot-transcribe', { body: { id: data.id } })
 }
 
-// Cheers from the last hour, newest first. Anonymous reads are limited to that window by RLS.
+// All cheers for this event, newest first. Staff only: the database policy blocks anonymous reads.
 export async function fetchRecentCheers() {
   if (!supabase) return null
-  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString()
   const { data, error } = await supabase
     .from('cheerspot_cheers')
     .select('id, created_at, sender_name, athlete_name, duration_sec, audio_path, status, transcript, reason')
-    .gte('created_at', since)
     .order('created_at', { ascending: false })
   if (error) return null
   return data

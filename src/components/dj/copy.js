@@ -2,8 +2,6 @@
 export const POLL_MS = 15000
 export const GAP_SEC = 5
 export const AUTO_MS = 30 * 60000
-export const EXP_MS = 60 * 60000
-export const EXPIRY_SOON_MS = 15 * 60000
 export const FRESH_MS = 9000
 
 export const pad = n => String(n).padStart(2, '0')
@@ -25,6 +23,7 @@ export const COPY = {
     ariaVolume: 'Volume',
     ariaPlayNow: 'Putar sekarang',
     ariaReplay: 'Putar ulang',
+    logout: 'Keluar',
     ariaClose: 'Tutup',
     live: 'LIVE',
     newCheer: 'cheer baru',
@@ -47,8 +46,6 @@ export const COPY = {
     waitCheer: 'Menunggu cheer',
     autoEnded: 'Auto-play mati otomatis setelah 30 menit. Nyalakan lagi untuk lanjut.',
     autoAgain: 'Nyalakan lagi',
-    expNote: 'Hilang otomatis 1 jam setelah dikirim',
-    expIn: m => 'hilang dlm ' + m + ' mnt',
     // Not in the design: shown only when a save or an audio load fails.
     saveError: 'Gagal menyimpan. Coba lagi.',
     audioError: 'Audio tidak bisa diputar. Tekan putar untuk coba lagi.',
@@ -59,6 +56,7 @@ export const COPY = {
     ariaVolume: 'Volume',
     ariaPlayNow: 'Play now',
     ariaReplay: 'Play again',
+    logout: 'Log out',
     ariaClose: 'Close',
     live: 'LIVE',
     newCheer: 'new cheers',
@@ -81,8 +79,6 @@ export const COPY = {
     waitCheer: 'Waiting for cheers',
     autoEnded: 'Auto-play turned off after 30 minutes. Turn it on again to continue.',
     autoAgain: 'Turn on again',
-    expNote: 'Removed automatically 1 hour after sending',
-    expIn: m => 'expires in ' + m + ' min',
     saveError: 'Could not save. Try again.',
     audioError: 'Audio could not play. Press play to try again.',
   },

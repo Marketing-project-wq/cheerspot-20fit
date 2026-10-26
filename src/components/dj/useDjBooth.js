@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { fetchRecentCheers, getAudioUrl, updateCheerStatus } from '../../lib/cheers.js'
-import { AUTO_MS, EXP_MS, FRESH_MS, GAP_SEC, POLL_MS } from './copy.js'
+import { AUTO_MS, FRESH_MS, GAP_SEC, POLL_MS } from './copy.js'
 
 // Maps a cheerspot_cheers row to the shape the booth uses.
 const fromRow = row => ({
@@ -15,7 +15,7 @@ const fromRow = row => ({
 })
 
 // Queue, history and playback for the DJ booth. The queue is the approved cheers that are not
-// playing (oldest first); history is the played ones. A local 'played' mark wins over the server
+// playing (newest first); history is the played ones. A local 'played' mark wins over the server
 // copy until its save finishes, so a poll still in flight cannot bring a played cheer back.
 export default function useDjBooth() {
   const [cheers, setCheers] = useState([])
@@ -49,15 +49,16 @@ export default function useDjBooth() {
 
   const nowId = now ? now.id : null
   const rows = cheers.map(c => (marks[c.id] ? { ...c, status: 'played', playedTs: marks[c.id].ts } : c))
+  // Newest approved cheer first, so cheers that just arrived are played before older ones.
   const queue = rows
-    .filter(c => c.status === 'approved' && c.id !== nowId && nowTs - c.ts < EXP_MS)
-    .sort((a, b) => a.ts - b.ts)
+    .filter(c => c.status === 'approved' && c.id !== nowId)
+    .sort((a, b) => b.ts - a.ts)
   const history = rows
     .filter(c => c.status === 'played')
     .sort((a, b) => (b.playedTs ?? b.ts) - (a.playedTs ?? a.ts))
   const newCount = queue.filter(q => fresh.has(q.id)).length
 
-  // Poll the last hour of cheers. A cheer approved after the first load is flagged as new for a few seconds.
+  // Poll all cheers. A cheer approved after the first load is flagged as new for a few seconds.
   useEffect(() => {
     let alive = true
     const load = async () => {
