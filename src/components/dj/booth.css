@@ -15,7 +15,7 @@
 
   box-sizing: border-box;
   min-height: 100dvh;
-  max-width: 1600px;
+  max-width: 1840px;
   margin: 0 auto;
   padding: 16px;
   display: flex;
@@ -118,7 +118,7 @@
 
 @media (min-width: 1100px) {
   .booth-grid {
-    grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.25fr) minmax(300px, 1fr);
+    grid-template-columns: minmax(380px, 1.2fr) minmax(0, 1.1fr) minmax(320px, 0.9fr);
     align-items: start;
   }
 }
@@ -272,8 +272,18 @@
 .booth-music__body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+/* Now playing, transport and volume sit together under the video. */
+.booth-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
 }
 
 .booth-url {
@@ -329,14 +339,12 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
-  margin-top: 8px;
 }
 
 .booth-now-track {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-top: 16px;
   min-width: 0;
 }
 
@@ -391,9 +399,6 @@
   accent-color: var(--accent);
 }
 
-.booth-music .booth-slider {
-  margin-top: 16px;
-}
 
 /* Now playing */
 .booth-now {
@@ -704,25 +709,29 @@
 /* YouTube search results in the music panel */
 .booth-results {
   list-style: none;
-  margin: 12px 0 0;
-  padding: 0;
+  margin: 0;
+  padding: 0 4px 0 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 420px;
+  max-height: 360px;
   overflow-y: auto;
 }
 .booth-result {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   padding: 8px;
-  border-radius: 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
 }
+.booth-result:hover {
+  border-color: var(--line);
+}
 .booth-result__thumb {
-  width: 96px;
-  height: 54px;
+  width: 112px;
+  height: 63px;
   object-fit: cover;
   border-radius: 6px;
   flex-shrink: 0;

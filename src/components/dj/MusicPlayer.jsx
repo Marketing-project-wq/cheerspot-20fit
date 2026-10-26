@@ -225,6 +225,58 @@ export default function MusicPlayer({ started, onToast }) {
         aria-hidden={!ytInfo.loaded}
       />
 
+      {/* Deck: what is playing and its controls, right under the video. */}
+      <div className="booth-deck">
+        <div className="booth-now-track" aria-live="polite">
+          <span className="booth-now-track__label">Now playing</span>
+          <span className="booth-now-track__title">
+            {tab === 'youtube'
+              ? ytInfo.title || (ytInfo.loaded ? 'Loading track...' : 'Nothing loaded')
+              : localInfo.title || 'Nothing playing'}
+          </span>
+          {tab === 'youtube' && ytPlaylist && ytInfo.count > 0 && (
+            <span className="booth-now-track__meta">Track {trackNumber} of {ytInfo.count}</span>
+          )}
+          {tab === 'local' && localInfo.count > 0 && (
+            <span className="booth-now-track__meta">Track {localInfo.index + 1} of {localInfo.count}</span>
+          )}
+        </div>
+        {tab === 'youtube' ? (
+          <Transport
+            playing={ytInfo.playing}
+            shuffle={ytInfo.shuffle}
+            canTrack={ytPlaylist}
+            hasTrack={ytInfo.loaded}
+            shuffleDisabled={!ytPlaylist}
+            onPrevious={() => ytRef.current?.previous()}
+            onToggle={ytToggle}
+            onNext={() => ytRef.current?.next()}
+            onShuffle={() => ytRef.current?.toggleShuffle()}
+          />
+        ) : (
+          <Transport
+            playing={localInfo.playing}
+            shuffle={localInfo.shuffle}
+            canTrack={localInfo.count > 1}
+            hasTrack={localInfo.count > 0}
+            shuffleDisabled={localInfo.count < 2}
+            onPrevious={() => localRef.current?.previous()}
+            onToggle={localToggle}
+            onNext={() => localRef.current?.next()}
+            onShuffle={() => localRef.current?.toggleShuffle()}
+          />
+        )}
+        <Slider
+          id="music-volume"
+          label="Music volume"
+          value={Math.round(volume * 100)}
+          min={0}
+          max={100}
+          format={value => `${value}%`}
+          onChange={value => setVolume(value / 100)}
+        />
+      </div>
+
       {tab === 'youtube' ? (
         <div role="tabpanel" id="panel-youtube" aria-labelledby="tab-youtube" className="booth-music__body">
           <form className="booth-url" onSubmit={loadPlaylist}>
@@ -244,11 +296,14 @@ export default function MusicPlayer({ started, onToast }) {
               Load
             </button>
           </form>
+          {urlError && <p className="booth-error" role="alert">{urlError}</p>}
+          {!ytReady && <p className="booth-hint">Start the session to load YouTube.</p>}
+          {ytReady && !ytInfo.loaded && <p className="booth-hint">Paste a link and press Load, or search below.</p>}
           <form className="booth-url" onSubmit={runSearch}>
             <label className="booth-field">
               <span className="booth-field__label">Search YouTube</span>
               <input
-                type="text"
+                type="search"
                 autoComplete="off"
                 spellCheck={false}
                 placeholder="Artist or song name"
@@ -270,27 +325,19 @@ export default function MusicPlayer({ started, onToast }) {
                     <span className="booth-result__title">{item.title}</span>
                     <span className="booth-result__channel">{item.channel}</span>
                   </div>
-                  <button type="button" className="booth-btn" onClick={() => playResult(item)} disabled={!ytReady}>
-                    Play
+                  <button
+                    type="button"
+                    className="booth-btn booth-btn--icon"
+                    onClick={() => playResult(item)}
+                    disabled={!ytReady}
+                    aria-label={`Play ${item.title}`}
+                  >
+                    <Icon name="play" />
                   </button>
                 </li>
               ))}
             </ul>
           )}
-          {urlError && <p className="booth-error" role="alert">{urlError}</p>}
-          {!ytReady && <p className="booth-hint">Start the session to load YouTube.</p>}
-          {ytReady && !ytInfo.loaded && <p className="booth-hint">Paste a link and press Load.</p>}
-          <Transport
-            playing={ytInfo.playing}
-            shuffle={ytInfo.shuffle}
-            canTrack={ytPlaylist}
-            hasTrack={ytInfo.loaded}
-            shuffleDisabled={!ytPlaylist}
-            onPrevious={() => ytRef.current?.previous()}
-            onToggle={ytToggle}
-            onNext={() => ytRef.current?.next()}
-            onShuffle={() => ytRef.current?.toggleShuffle()}
-          />
         </div>
       ) : (
         <div role="tabpanel" id="panel-local" aria-labelledby="tab-local" className="booth-music__body">
@@ -299,44 +346,8 @@ export default function MusicPlayer({ started, onToast }) {
             <input type="file" multiple accept="audio/*" onChange={onFiles} disabled={!started} className="booth-file__input" />
           </label>
           <p className="booth-hint">{localInfo.count ? `${localInfo.count} file${localInfo.count === 1 ? '' : 's'} ready` : 'No files selected.'}</p>
-          <Transport
-            playing={localInfo.playing}
-            shuffle={localInfo.shuffle}
-            canTrack={localInfo.count > 1}
-            hasTrack={localInfo.count > 0}
-            shuffleDisabled={localInfo.count < 2}
-            onPrevious={() => localRef.current?.previous()}
-            onToggle={localToggle}
-            onNext={() => localRef.current?.next()}
-            onShuffle={() => localRef.current?.toggleShuffle()}
-          />
         </div>
       )}
-
-      <div className="booth-now-track" aria-live="polite">
-        <span className="booth-now-track__label">Now playing</span>
-        <span className="booth-now-track__title">
-          {tab === 'youtube'
-            ? ytInfo.title || (ytInfo.loaded ? 'Loading track...' : 'Nothing loaded')
-            : localInfo.title || 'Nothing playing'}
-        </span>
-        {tab === 'youtube' && ytPlaylist && ytInfo.count > 0 && (
-          <span className="booth-now-track__meta">Track {trackNumber} of {ytInfo.count}</span>
-        )}
-        {tab === 'local' && localInfo.count > 0 && (
-          <span className="booth-now-track__meta">Track {localInfo.index + 1} of {localInfo.count}</span>
-        )}
-      </div>
-
-      <Slider
-        id="music-volume"
-        label="Music volume"
-        value={Math.round(volume * 100)}
-        min={0}
-        max={100}
-        format={value => `${value}%`}
-        onChange={value => setVolume(value / 100)}
-      />
     </section>
   )
 }
