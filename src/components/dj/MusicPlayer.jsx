@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createLocalMusic, registerMusicSource, setMusicVolume } from '../../lib/ducking.js'
 import { createYouTubeSource, parseYouTubeInput } from '../../lib/youtubePlayer.js'
+import { searchYouTube } from '../../lib/youtubeSearch.js'
 import { Icon, Slider } from './boothParts.jsx'
 import { readStored, writeStored } from './boothStorage.js'
 
@@ -48,6 +49,9 @@ export default function MusicPlayer({ started, onToast }) {
   const [url, setUrl] = useState(() => readStored(PLAYLIST_KEY, ''))
   const [urlError, setUrlError] = useState('')
   const [searchText, setSearchText] = useState('')
+  const [results, setResults] = useState([])
+  const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState('')
   const [volume, setVolume] = useState(() => readStored(VOLUME_KEY, 0.8))
   const [ytInfo, setYtInfo] = useState(EMPTY_YT)
   const [localInfo, setLocalInfo] = useState(EMPTY_LOCAL)
@@ -100,6 +104,31 @@ export default function MusicPlayer({ started, onToast }) {
   }, [started])
 
   const ytReady = started && !!window.YT?.Player
+
+  const runSearch = async event => {
+    event.preventDefault()
+    const q = searchText.trim()
+    if (!q || searching) return
+    setSearching(true)
+    setSearchError('')
+    try {
+      setResults(await searchYouTube(q))
+    } catch {
+      setResults([])
+      setSearchError('Search is not available right now. Paste a link above instead.')
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  // Play a search result through the same path as a pasted link.
+  const playResult = item => {
+    const parsed = parseYouTubeInput(`https://www.youtube.com/watch?v=${item.id}`)
+    if (!parsed || !ytRef.current) return
+    setUrlError('')
+    localRef.current?.pause()
+    ytRef.current.load(parsed)
+  }
 
   const loadPlaylist = event => {
     event.preventDefault()
@@ -210,16 +239,7 @@ export default function MusicPlayer({ started, onToast }) {
               Load
             </button>
           </form>
-          {/* Opens YouTube search in a new tab. Copy a video or playlist link from there and paste it above. */}
-          <form
-            className="booth-url"
-            onSubmit={event => {
-              event.preventDefault()
-              const q = searchText.trim()
-              if (!q) return
-              window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`, '_blank', 'noopener')
-            }}
-          >
+          <form className="booth-url" onSubmit={runSearch}>
             <label className="booth-field">
               <span className="booth-field__label">Search YouTube</span>
               <input
@@ -231,10 +251,27 @@ export default function MusicPlayer({ started, onToast }) {
                 onChange={event => setSearchText(event.target.value)}
               />
             </label>
-            <button type="submit" className="booth-btn" disabled={!searchText.trim()}>
-              Search
+            <button type="submit" className="booth-btn" disabled={!searchText.trim() || searching || !started}>
+              {searching ? 'Searching...' : 'Search'}
             </button>
           </form>
+          {searchError && <p className="booth-error" role="alert">{searchError}</p>}
+          {results.length > 0 && (
+            <ul className="booth-results" aria-label="YouTube results">
+              {results.map(item => (
+                <li key={item.id} className="booth-result">
+                  {item.thumb && <img src={item.thumb} alt="" className="booth-result__thumb" />}
+                  <div className="booth-result__text">
+                    <span className="booth-result__title">{item.title}</span>
+                    <span className="booth-result__channel">{item.channel}</span>
+                  </div>
+                  <button type="button" className="booth-btn" onClick={() => playResult(item)} disabled={!ytReady}>
+                    Play
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           {urlError && <p className="booth-error" role="alert">{urlError}</p>}
           {!ytReady && <p className="booth-hint">Start the session to load YouTube.</p>}
           {ytReady && !ytInfo.loaded && <p className="booth-hint">Paste a link and press Load.</p>}
