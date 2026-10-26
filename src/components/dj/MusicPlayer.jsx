@@ -47,6 +47,7 @@ export default function MusicPlayer({ started, onToast }) {
   const [tab, setTab] = useState('youtube')
   const [url, setUrl] = useState(() => readStored(PLAYLIST_KEY, ''))
   const [urlError, setUrlError] = useState('')
+  const [searchText, setSearchText] = useState('')
   const [volume, setVolume] = useState(() => readStored(VOLUME_KEY, 0.8))
   const [ytInfo, setYtInfo] = useState(EMPTY_YT)
   const [localInfo, setLocalInfo] = useState(EMPTY_LOCAL)
@@ -207,6 +208,31 @@ export default function MusicPlayer({ started, onToast }) {
             </label>
             <button type="submit" className="booth-btn" disabled={!ytReady}>
               Load
+            </button>
+          </form>
+          {/* Opens YouTube search in a new tab. Copy a video or playlist link from there and paste it above. */}
+          <form
+            className="booth-url"
+            onSubmit={event => {
+              event.preventDefault()
+              const q = searchText.trim()
+              if (!q) return
+              window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`, '_blank', 'noopener')
+            }}
+          >
+            <label className="booth-field">
+              <span className="booth-field__label">Search YouTube</span>
+              <input
+                type="text"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="Artist or song name"
+                value={searchText}
+                onChange={event => setSearchText(event.target.value)}
+              />
+            </label>
+            <button type="submit" className="booth-btn" disabled={!searchText.trim()}>
+              Search
             </button>
           </form>
           {urlError && <p className="booth-error" role="alert">{urlError}</p>}
