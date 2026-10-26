@@ -217,8 +217,13 @@ export default function MusicPlayer({ started, onToast }) {
         </button>
       </div>
 
-      {/* Always mounted: the YouTube player lives in here, even while the Local files tab is open. */}
-      <div ref={hostRef} className="booth-yt-host" aria-hidden="true" />
+      {/* Always mounted: the YouTube player lives in here, even while the Local files tab is open.
+          YouTube will not play in a hidden or tiny player, so it shows once a link is loaded. */}
+      <div
+        ref={hostRef}
+        className={`booth-yt-host${ytInfo.loaded ? ' is-visible' : ''}`}
+        aria-hidden={!ytInfo.loaded}
+      />
 
       {tab === 'youtube' ? (
         <div role="tabpanel" id="panel-youtube" aria-labelledby="tab-youtube" className="booth-music__body">

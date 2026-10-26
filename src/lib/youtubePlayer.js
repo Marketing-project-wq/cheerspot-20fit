@@ -65,6 +65,8 @@ export function createYouTubeSource(container, { onChange, onSkip } = {}) {
   let shuffleApplied = false
   let cancelRamp = null
   let destroyed = false
+  let ready = false
+  let pendingLoad = null
 
   const emit = patch => {
     info = { ...info, ...patch }
@@ -109,7 +111,16 @@ export function createYouTubeSource(container, { onChange, onSkip } = {}) {
       }
       refresh()
     }
-    emit({ playing, loaded: state !== YT.PlayerState.UNSTARTED })
+    // Stay loaded through UNSTARTED: loadVideoById reports it first, and a blocked autoplay stays there.
+    emit({ playing })
+  }
+
+  const startLoad = parsed => {
+    if (parsed.kind === 'playlist') {
+      call('loadPlaylist', { list: parsed.id, listType: 'playlist', index: 0 })
+    } else {
+      call('loadVideoById', parsed.id)
+    }
   }
 
   const handleError = code => {
@@ -122,10 +133,16 @@ export function createYouTubeSource(container, { onChange, onSkip } = {}) {
   }
 
   const player = new YT.Player(mount, {
-    height: '180',
-    width: '320',
+    height: '100%',
+    width: '100%',
     playerVars: { playsinline: 1, rel: 0, origin: window.location.origin },
     events: {
+      // Player methods only exist after onReady. A load requested earlier waits here.
+      onReady: () => {
+        ready = true
+        if (pendingLoad) startLoad(pendingLoad)
+        pendingLoad = null
+      },
       onStateChange: event => handleState(event.data),
       onError: event => handleError(event.data),
     },
@@ -134,12 +151,9 @@ export function createYouTubeSource(container, { onChange, onSkip } = {}) {
   return {
     load(parsed) {
       shuffleApplied = false
-      if (parsed.kind === 'playlist') {
-        call('loadPlaylist', { list: parsed.id, listType: 'playlist', index: 0 })
-      } else {
-        call('loadVideoById', parsed.id)
-      }
-      emit({ kind: parsed.kind, loaded: true })
+      if (ready) startLoad(parsed)
+      else pendingLoad = parsed
+      emit({ kind: parsed.kind, title: '', loaded: true })
     },
     play: () => call('playVideo'),
     pause: () => call('pauseVideo'),

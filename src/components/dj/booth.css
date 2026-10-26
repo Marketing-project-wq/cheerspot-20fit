@@ -236,7 +236,8 @@
   box-shadow: inset 0 -3px 0 var(--accent);
 }
 
-/* The YouTube iframe stays in the DOM, clipped to 1px. Audio plays without a visible video. */
+/* The YouTube iframe stays in the DOM. Hidden until a link loads; YouTube refuses to play
+   in a hidden or tiny player, so once loaded it shows as a 16:9 video (at least 200px tall). */
 .booth-yt-host {
   position: fixed;
   left: 0;
@@ -246,6 +247,26 @@
   overflow: hidden;
   opacity: 0;
   pointer-events: none;
+}
+
+.booth-yt-host.is-visible {
+  position: relative;
+  width: 100%;
+  height: auto;
+  min-height: 200px;
+  aspect-ratio: 16 / 9;
+  margin-top: 12px;
+  border-radius: 12px;
+  background: #000;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.booth-yt-host iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
 }
 
 .booth-music__body {
