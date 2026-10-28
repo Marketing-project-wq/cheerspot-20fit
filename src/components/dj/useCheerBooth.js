@@ -30,7 +30,7 @@ const MUSIC_VOLUME_KEY = 'cheerspot.booth.musicVolume'
 const CHEER_VOLUME_KEY = 'cheerspot.booth.cheerVolume'
 
 // Fixed gap between AUTO cheers. Fade timings are the defaults in ducking.js.
-const GAP_SEC = 90
+const GAP_SEC = 60
 
 // Owns the booth state: queue, playback status, mode, and the AUTO scheduler.
 export default function useCheerBooth() {
