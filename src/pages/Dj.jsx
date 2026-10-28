@@ -8,7 +8,7 @@ export default function Dj() {
   // undefined = still checking the saved session, null = not signed in as staff.
   const [role, setRole] = useState(undefined)
   // A superadmin session left over from /admin does not open the booth by itself: the login page
-  // shows first, with a link to continue. Signing in on this page opens the booth for any staff role.
+  // shows first. Signing in on this page opens the booth for any staff role.
   const [entered, setEntered] = useState(false)
 
   useEffect(() => {
@@ -48,7 +48,7 @@ export default function Dj() {
   if (!role || (role === 'superadmin' && !entered)) {
     return (
       <div className="adm-root">
-        <DjLogin onSuccess={handleLogin} superadminSignedIn={role === 'superadmin'} onContinue={() => setEntered(true)} />
+        <DjLogin onSuccess={handleLogin} />
       </div>
     )
   }

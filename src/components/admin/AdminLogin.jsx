@@ -8,8 +8,8 @@ import { LangSwitch, Logo } from './shared.jsx'
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // copy overrides the heading strings ({ title, sub } per language), used by the DJ Booth login.
-// rememberDefault sets the "Remember me" box. notice ({ text, action, onAction }) shows a note above the form.
-export default function AdminLogin({ onSuccess, copy, rememberDefault = true, notice }) {
+// rememberDefault sets the "Remember me" box.
+export default function AdminLogin({ onSuccess, copy, rememberDefault = true }) {
   const { lang, setLang } = useT()
   const S = { ...(STRINGS[lang] || STRINGS.id), ...(copy?.[lang] || copy?.id) }
   const [email, setEmail] = useState('')
@@ -71,15 +71,6 @@ export default function AdminLogin({ onSuccess, copy, rememberDefault = true, no
               <h1 className="adm-login__title">{S.title}</h1>
               <p className="adm-login__sub">{S.sub}</p>
             </div>
-
-            {notice && (
-              <div className="adm-info adm-notice">
-                <span>{notice.text}</span>
-                <button type="button" className="adm-link" onClick={notice.onAction}>
-                  {notice.action}
-                </button>
-              </div>
-            )}
 
             <div className="adm-field">
               <label className="adm-field__label" htmlFor="adm-email">

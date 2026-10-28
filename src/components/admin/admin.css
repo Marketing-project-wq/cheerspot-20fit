@@ -1537,13 +1537,6 @@
   font-weight: 700;
   color: #55554f;
 }
-.adm-notice {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
 .adm-djform__hint {
   font-size: 12px;
   font-weight: 500;
