@@ -17,6 +17,8 @@ import { deleteCheer } from '../../lib/staff.js'
 
 // New cheers and status changes from the booth show up within a few seconds, without a refresh.
 const POLL_MS = 3000
+// While a cheer waits for its transcript, poll faster so the text shows as soon as it is saved.
+const FAST_POLL_MS = 1000
 const NEW_MARK_MS = 9000
 // Transcription runs right after a cheer is sent. Without a transcript after this long it most
 // likely failed; the cheer can then be judged by listening.
@@ -148,15 +150,21 @@ export default function useModeration({ lang, liveFeed }) {
       fresh.forEach(row => autoChecked.current.add(row.id))
       if (st.autoApprove) fresh.filter(row => !needsReview(scanWords(row.transcript, w))).forEach(row => autoApprove(row.id))
     }
-    load()
-    const t = setInterval(load, POLL_MS)
+    let t = null
+    const tick = async () => {
+      await load().catch(() => {})
+      if (!alive) return
+      const waiting = live.current.items?.some(x => x.transcribing)
+      t = setTimeout(tick, waiting ? FAST_POLL_MS : POLL_MS)
+    }
+    tick()
     const onVisible = () => {
-      if (document.visibilityState === 'visible') load()
+      if (document.visibilityState === 'visible') load().catch(() => {})
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       alive = false
-      clearInterval(t)
+      clearTimeout(t)
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [])
