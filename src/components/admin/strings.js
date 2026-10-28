@@ -8,7 +8,7 @@ const COPY = {
   sub: ['Khusus panitia 20FIT Event.', '20FIT Event staff only.'],
   roleLbl: ['MASUK SEBAGAI', 'SIGN IN AS'],
   emailLbl: ['USERNAME / EMAIL', 'USERNAME / EMAIL'],
-  userPh: ['username atau nama@20fit.id', 'username or name@20fit.id'],
+  userPh: ['username atau email', 'username or email'],
   passLbl: ['KATA SANDI', 'PASSWORD'],
   forgot: ['Lupa kata sandi?', 'Forgot password?'],
   showPass: ['Tampilkan kata sandi', 'Show password'],

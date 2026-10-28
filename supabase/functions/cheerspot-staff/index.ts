@@ -4,6 +4,10 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 // service role, so this runs on the server. The auth project is shared with other 20FIT systems:
 // accounts made here carry app_metadata.cheerspot = true, and list, reset and remove only touch those.
 const MIN_PASSWORD = 8
+// DJs sign in with a username; Supabase stores it as username@DJ_EMAIL_DOMAIN (our own domain, no mail
+// is sent). Must match src/lib/auth.js.
+const DJ_EMAIL_DOMAIN = 'cheerspot.20fit.id'
+const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{2,31}$/
 const PER_PAGE = 1000
 const MAX_PAGES = 20
 
@@ -44,22 +48,22 @@ async function handle(req: Request): Promise<Response> {
   }
 
   if (action === 'create') {
-    const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() : ''
+    const username = typeof input.username === 'string' ? input.username.trim().toLowerCase() : ''
     const name = typeof input.name === 'string' ? input.name.trim().slice(0, 80) : ''
     const password = typeof input.password === 'string' ? input.password : ''
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(400, 'invalid_email')
+    if (!USERNAME_RE.test(username)) return fail(400, 'invalid_username')
+    const email = `${username}@${DJ_EMAIL_DOMAIN}`
     if (password.length < MIN_PASSWORD) return fail(400, 'weak_password')
     const { data, error } = await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { name },
+      user_metadata: { name, username },
       app_metadata: { role: 'admin', cheerspot: true },
     })
-    // An email already used by another 20FIT system is left alone: its metadata is not ours to change.
     if (error) {
       const taken = error.status === 422 || /registered|exists/i.test(error.message)
-      return taken ? fail(409, 'email_taken') : fail(502, 'create_failed')
+      return taken ? fail(409, 'username_taken') : fail(502, 'create_failed')
     }
     return Response.json({ account: toAccount(data.user) })
   }
@@ -86,7 +90,7 @@ async function handle(req: Request): Promise<Response> {
 function toAccount(user: any) {
   return {
     id: user.id,
-    email: user.email ?? '',
+    username: user.user_metadata?.username ?? String(user.email ?? '').split('@')[0],
     name: user.user_metadata?.name ?? '',
     createdAt: user.created_at ?? null,
     lastSignInAt: user.last_sign_in_at ?? null,

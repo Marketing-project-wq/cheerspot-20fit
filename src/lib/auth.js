@@ -9,9 +9,18 @@ export function staffRole(session) {
   return STAFF_ROLES.includes(role) ? role : null
 }
 
-export async function signIn(email, password) {
+// DJ accounts sign in with a username. Supabase needs an email, so a username maps to an internal
+// address on our own domain that never receives mail. Must match cheerspot-staff.
+export const DJ_EMAIL_DOMAIN = 'cheerspot.20fit.id'
+
+export function loginEmail(login) {
+  const value = String(login || '').trim().toLowerCase()
+  return value.includes('@') ? value : `${value}@${DJ_EMAIL_DOMAIN}`
+}
+
+export async function signIn(login, password) {
   if (!supabase) throw new Error('Supabase is not configured')
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail(login), password })
   if (error) throw error
   return data.session
 }

@@ -1537,6 +1537,11 @@
   font-weight: 700;
   color: #55554f;
 }
+.adm-djform__hint {
+  font-size: 12px;
+  font-weight: 500;
+  color: #77776f;
+}
 .adm-djform__error {
   margin: 0;
   color: #bf0000;

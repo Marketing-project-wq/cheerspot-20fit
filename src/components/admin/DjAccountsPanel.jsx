@@ -9,7 +9,8 @@ const T = {
   newTitle: ['Akun baru', 'New account'],
   name: ['Nama', 'Name'],
   namePh: ['mis. DJ Rio', 'e.g. DJ Rio'],
-  email: ['Email', 'Email'],
+  username: ['Username', 'Username'],
+  userHint: ['huruf kecil, angka, titik, minus · 3–32 karakter', 'lowercase letters, numbers, dot, dash · 3–32 characters'],
   pass: ['Kata sandi', 'Password'],
   passPh: ['minimal 8 karakter', 'at least 8 characters'],
   gen: ['Buat acak', 'Generate'],
@@ -25,12 +26,11 @@ const T = {
   never: ['belum pernah', 'never'],
   reset: ['Reset sandi', 'Reset password'],
   remove: ['Hapus', 'Remove'],
-  confirmRemove: ['Hapus akun {email}? DJ ini tidak bisa masuk lagi.', 'Remove {email}? This DJ can no longer sign in.'],
-  newPass: ['Kata sandi baru untuk {email}:', 'New password for {email}:'],
+  confirmRemove: ['Hapus akun {user}? DJ ini tidak bisa masuk lagi.', 'Remove {user}? This DJ can no longer sign in.'],
   errLoad: ['Daftar akun tidak bisa dimuat. Coba lagi.', 'Could not load accounts. Try again.'],
-  email_taken: ['Email ini sudah dipakai di sistem 20FIT lain. Pakai email lain.', 'This email is already used by another 20FIT system. Use another email.'],
+  username_taken: ['Username ini sudah dipakai. Pilih username lain.', 'That username is taken. Pick another one.'],
   weak_password: ['Kata sandi minimal 8 karakter.', 'Password needs at least 8 characters.'],
-  invalid_email: ['Format email belum benar.', 'That email doesn’t look right.'],
+  invalid_username: ['Username 3–32 karakter: huruf kecil, angka, titik, minus, atau garis bawah.', 'Username: 3–32 lowercase letters, numbers, dot, dash or underscore.'],
   failed: ['Gagal. Coba lagi.', 'Something went wrong. Try again.'],
 }
 
@@ -41,6 +41,19 @@ function randomPassword(length = 10) {
   return Array.from(bytes, b => ALPHABET[b % ALPHABET.length]).join('')
 }
 
+// Suggests a username from the display name: "DJ Mandiri x JHR" becomes "dj-mandiri-x-jhr".
+function slugify(name) {
+  return name
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32)
+}
+
+const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{2,31}$/
+
 function formatDate(value, lang) {
   if (!value) return null
   return new Date(value).toLocaleString(lang === 'en' ? 'en-GB' : 'id-ID', { dateStyle: 'medium', timeStyle: 'short' })
@@ -50,7 +63,9 @@ export default function DjAccountsPanel({ lang }) {
   const t = key => pick(T[key] || T.failed, lang)
   const [accounts, setAccounts] = useState(null)
   const [loadError, setLoadError] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [form, setForm] = useState({ name: '', username: '', password: '' })
+  // The username follows the name until the superadmin edits it by hand.
+  const [userEdited, setUserEdited] = useState(false)
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState('')
   // Credentials shown once after create or reset, so the superadmin can pass them on.
@@ -80,12 +95,15 @@ export default function DjAccountsPanel({ lang }) {
     e.preventDefault()
     if (busy) return
     setFormError('')
+    const username = form.username.trim().toLowerCase()
+    if (!USERNAME_RE.test(username)) return setFormError('invalid_username')
     if (form.password.length < 8) return setFormError('weak_password')
     setBusy(true)
     try {
-      await createDjAccount(form)
-      show({ email: form.email.trim().toLowerCase(), password: form.password })
-      setForm({ name: '', email: '', password: '' })
+      await createDjAccount({ ...form, username })
+      show({ username, password: form.password })
+      setForm({ name: '', username: '', password: '' })
+      setUserEdited(false)
       load()
     } catch (err) {
       setFormError(T[err.code] ? err.code : 'failed')
@@ -99,7 +117,7 @@ export default function DjAccountsPanel({ lang }) {
     setRowBusy(account.id)
     try {
       await resetDjPassword(account.id, password)
-      show({ email: account.email, password })
+      show({ username: account.username, password })
     } catch {
       window.alert(t('failed'))
     } finally {
@@ -108,11 +126,11 @@ export default function DjAccountsPanel({ lang }) {
   }
 
   const remove = async account => {
-    if (!window.confirm(t('confirmRemove').replace('{email}', account.email))) return
+    if (!window.confirm(t('confirmRemove').replace('{user}', account.username))) return
     setRowBusy(account.id)
     try {
       await removeDjAccount(account.id)
-      if (shown?.email === account.email) setShown(null)
+      if (shown?.username === account.username) setShown(null)
       load()
     } catch {
       window.alert(t('failed'))
@@ -122,7 +140,7 @@ export default function DjAccountsPanel({ lang }) {
   }
 
   const copyCreds = () => {
-    const text = `CheerSpot DJ Booth\n${window.location.origin}/dj\nEmail: ${shown.email}\nPassword: ${shown.password}`
+    const text = `CheerSpot DJ Booth\n${window.location.origin}/dj\nUsername: ${shown.username}\nPassword: ${shown.password}`
     navigator.clipboard?.writeText(text).then(() => setCopied(true)).catch(() => {})
   }
 
@@ -143,20 +161,28 @@ export default function DjAccountsPanel({ lang }) {
                 className="adm-input-plain"
                 value={form.name}
                 placeholder={t('namePh')}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                onChange={e => {
+                  const name = e.target.value
+                  setForm(f => ({ ...f, name, username: userEdited ? f.username : slugify(name) }))
+                }}
               />
             </label>
             <label className="adm-djform__field">
-              <span>{t('email')}</span>
+              <span>{t('username')}</span>
               <input
-                type="email"
                 className="adm-input-plain"
                 autoCapitalize="none"
+                autoCorrect="off"
                 autoComplete="off"
-                value={form.email}
-                placeholder="nama@20fit.id"
-                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                spellCheck={false}
+                value={form.username}
+                placeholder="dj-rio"
+                onChange={e => {
+                  setUserEdited(true)
+                  setForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/\s+/g, '-') }))
+                }}
               />
+              <small className="adm-djform__hint">{t('userHint')}</small>
             </label>
             <label className="adm-djform__field">
               <span>{t('pass')}</span>
@@ -179,7 +205,7 @@ export default function DjAccountsPanel({ lang }) {
               {t(formError)}
             </p>
           )}
-          <button type="submit" className="adm-btn-dark-sm adm-djform__submit" disabled={busy || !form.email.trim()}>
+          <button type="submit" className="adm-btn-dark-sm adm-djform__submit" disabled={busy || !form.username.trim()}>
             {busy ? t('creating') : t('create')}
           </button>
         </form>
@@ -188,9 +214,9 @@ export default function DjAccountsPanel({ lang }) {
           <div className="adm-card-plain adm-djcreds" role="status">
             <span className="adm-settings__sub">{t('made')}</span>
             <code>
-              {shown.email}
+              Username: {shown.username}
               <br />
-              {shown.password}
+              Password: {shown.password}
             </code>
             <button type="button" className="adm-btn-dark-sm" onClick={copyCreds}>
               {copied ? t('copied') : t('copy')}
@@ -205,9 +231,9 @@ export default function DjAccountsPanel({ lang }) {
         {accounts?.map(account => (
           <div key={account.id} className="adm-card-plain adm-card-plain--row">
             <div className="adm-settings__text">
-              <span className="adm-settings__title">{account.name || account.email}</span>
+              <span className="adm-settings__title">{account.name || account.username}</span>
               <span className="adm-settings__sub">
-                {account.email} · {t('lastIn')}: {formatDate(account.lastSignInAt, lang) || t('never')}
+                {account.username} · {t('lastIn')}: {formatDate(account.lastSignInAt, lang) || t('never')}
               </span>
             </div>
             <button type="button" className="adm-btn-dark-sm" disabled={rowBusy === account.id} onClick={() => reset(account)}>
