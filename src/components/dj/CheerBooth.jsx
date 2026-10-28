@@ -1,23 +1,18 @@
-import { useState } from 'react'
 import CheerNowPlaying from './CheerNowPlaying.jsx'
 import CheerQueue from './CheerQueue.jsx'
-import DjSettings from './DjSettings.jsx'
 import MusicPlayer from './MusicPlayer.jsx'
 import { Slider } from './boothParts.jsx'
 import useCheerBooth from './useCheerBooth.js'
 import './booth.css'
 
-export default function CheerBooth() {
+export default function CheerBooth({ onLogout }) {
   const booth = useCheerBooth()
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const {
     started,
     mode,
     setMode,
     master,
     setMaster,
-    settings,
-    updateSettings,
     items,
     queuedIds,
     status,
@@ -64,6 +59,10 @@ export default function CheerBooth() {
             onChange={value => setMaster(value / 100)}
           />
         </div>
+
+        <button type="button" className="booth-btn booth-logout" onClick={onLogout}>
+          Log out
+        </button>
       </header>
 
       <div className="booth-body" inert={!started}>
@@ -91,13 +90,6 @@ export default function CheerBooth() {
             onReorder={reorder}
           />
         </main>
-
-        <DjSettings
-          open={settingsOpen}
-          onToggle={() => setSettingsOpen(open => !open)}
-          settings={settings}
-          onChange={updateSettings}
-        />
       </div>
 
       {toast && (

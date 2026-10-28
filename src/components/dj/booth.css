@@ -104,6 +104,10 @@
   min-width: 0;
 }
 
+.booth-logout {
+  flex: none;
+}
+
 .booth-body {
   display: flex;
   flex-direction: column;
@@ -615,42 +619,6 @@
 
 .booth-history__row .booth-queue__name {
   font-size: 1rem;
-}
-
-/* Settings */
-.booth-settings {
-  padding: 0;
-}
-
-.booth-settings__toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  min-height: 52px;
-  padding: 0 16px;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.booth-settings__chevron {
-  display: inline-flex;
-  transition: transform 0.2s;
-}
-
-.booth-settings__chevron.is-open {
-  transform: rotate(180deg);
-}
-
-.booth-settings__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 18px;
-  padding: 4px 16px 18px;
 }
 
 /* Toast and start screen */

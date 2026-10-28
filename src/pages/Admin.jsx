@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import AdminLogin from '../components/admin/AdminLogin.jsx'
 import ModerationDashboard from '../components/admin/ModerationDashboard.jsx'
 import { getSession, onSessionChange, signOut, staffRole } from '../lib/auth.js'
@@ -41,6 +41,8 @@ export default function Admin() {
   }
 
   if (role === undefined) return null
+  // A DJ who is already signed in goes straight to the booth, not moderation.
+  if (role === 'admin') return <Navigate to="/dj" replace />
 
   return (
     <div className="adm-root">

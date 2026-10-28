@@ -6,7 +6,6 @@ import {
   playCheer,
   restartCheer,
   resumeCheer,
-  setDuckingSettings,
   setMasterVolume,
   skipCheer,
   startAudio,
@@ -15,31 +14,15 @@ import {
 } from '../../lib/ducking.js'
 import { loadYouTubeApi } from '../../lib/youtubePlayer.js'
 import { formatTime } from './boothParts.jsx'
-import { readStored, writeStored } from './boothStorage.js'
 
-const SETTINGS_KEY = 'cheerspot.booth.settings'
-const DEFAULT_SETTINGS = { duckLevel: 0.2, fadeDownMs: 1000, fadeUpMs: 2500, delayBeforeUpMs: 1200, gapSec: 90 }
+// Fixed gap between AUTO cheers. Fade timings are the defaults in ducking.js.
+const GAP_SEC = 90
 
-function clampSettings(input) {
-  const num = (value, fallback, min, max) => {
-    const n = Number(value)
-    return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback
-  }
-  return {
-    duckLevel: num(input.duckLevel, DEFAULT_SETTINGS.duckLevel, 0, 0.5),
-    fadeDownMs: num(input.fadeDownMs, DEFAULT_SETTINGS.fadeDownMs, 0, 5000),
-    fadeUpMs: num(input.fadeUpMs, DEFAULT_SETTINGS.fadeUpMs, 0, 6000),
-    delayBeforeUpMs: num(input.delayBeforeUpMs, DEFAULT_SETTINGS.delayBeforeUpMs, 0, 5000),
-    gapSec: num(input.gapSec, DEFAULT_SETTINGS.gapSec, 15, 300),
-  }
-}
-
-// Owns the booth state: queue, playback status, mode, settings, and the AUTO scheduler.
+// Owns the booth state: queue, playback status, mode, and the AUTO scheduler.
 export default function useCheerBooth() {
   const [started, setStarted] = useState(false)
   const [mode, setMode] = useState('auto')
   const [master, setMaster] = useState(1)
-  const [settings, setSettings] = useState(() => clampSettings(readStored(SETTINGS_KEY, {})))
   const [items, setItems] = useState(() => getQueue())
   const [status, setStatus] = useState(getBoothStatus)
   const [lastPlayedId, setLastPlayedId] = useState(null)
@@ -51,7 +34,6 @@ export default function useCheerBooth() {
   const nextAtRef = useRef(nextAt)
   const itemsRef = useRef(items)
   const statusRef = useRef(status)
-  const settingsRef = useRef(settings)
   const toastTimer = useRef(null)
   // Cheers whose audio failed to load. AUTO skips them so one bad file does not repeat forever.
   const failedIds = useRef(new Set())
@@ -61,7 +43,6 @@ export default function useCheerBooth() {
     nextAtRef.current = nextAt
     itemsRef.current = items
     statusRef.current = status
-    settingsRef.current = settings
   })
 
   const showToast = useCallback(text => {
@@ -95,15 +76,6 @@ export default function useCheerBooth() {
   }, [showToast])
   useEffect(() => subscribeBooth(setStatus), [])
 
-  useEffect(() => {
-    setDuckingSettings({
-      duckLevel: settings.duckLevel,
-      fadeDownMs: settings.fadeDownMs,
-      fadeUpMs: settings.fadeUpMs,
-      delayBeforeUpMs: settings.delayBeforeUpMs,
-    })
-    writeStored(SETTINGS_KEY, settings)
-  }, [settings])
 
   useEffect(() => {
     setMasterVolume(master)
@@ -117,7 +89,7 @@ export default function useCheerBooth() {
           markPlayed(item.id).catch(() => showToast(`${item.athlete_name} played, but the status was not saved.`))
           setLastPlayedId(item.id)
         },
-        onEnd: () => setNextAt(Date.now() + settingsRef.current.gapSec * 1000),
+        onEnd: () => setNextAt(Date.now() + GAP_SEC * 1000),
         onError: () => {
           failedIds.current.add(item.id)
           showToast(`Audio for ${item.athlete_name} could not load. Skipped.`)
@@ -216,8 +188,6 @@ export default function useCheerBooth() {
     setMode,
     master,
     setMaster,
-    settings,
-    updateSettings: patch => setSettings(prev => clampSettings({ ...prev, ...patch })),
     items,
     approved,
     queuedIds: status.queued,
