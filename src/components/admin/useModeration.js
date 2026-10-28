@@ -32,7 +32,7 @@ const fromRow = row => ({
   bib: '',
 })
 
-const PAGES = ['mod', 'queue', 'hist', 'qr', 'set']
+const PAGES = ['mod', 'queue', 'hist', 'qr', 'dj', 'set']
 
 // Local moderation state for the superadmin dashboard. The TODO(supabase) marks where the
 // cheer feed, moderation writes and DJ queue would come from the database.

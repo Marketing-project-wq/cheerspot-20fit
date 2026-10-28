@@ -126,6 +126,7 @@ export const NAVS = [
   { key: 'queue', label: ['Antrean DJ', 'DJ queue'], icon: 'M12 4a8 8 0 1 0 0 16a8 8 0 1 0 0-16zM12 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z' },
   { key: 'hist', label: ['Riwayat putar', 'Play history'], icon: 'M12 4a8 8 0 1 0 0 16a8 8 0 1 0 0-16zM12 8v4l3 2' },
   { key: 'qr', label: ['QR Code venue', 'Venue QR code'], icon: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2' },
+  { key: 'dj', label: ['Akun DJ', 'DJ accounts'], icon: 'M12 4a4 4 0 1 0 0 8a4 4 0 1 0 0-8zM4 20c0-3.3 3.6-6 8-6s8 2.7 8 6' },
   { key: 'set', label: ['Pengaturan', 'Settings'], icon: 'M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6zM12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1' },
 ]
 

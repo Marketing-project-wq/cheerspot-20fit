@@ -1517,6 +1517,53 @@
   font-weight: 700;
   cursor: pointer;
 }
+.adm-btn-dark-sm:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* DJ accounts */
+.adm-djform {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+.adm-djform__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #55554f;
+}
+.adm-djform__error {
+  margin: 0;
+  color: #bf0000;
+  font-size: 14px;
+  font-weight: 600;
+}
+.adm-djform__submit {
+  align-self: flex-start;
+}
+.adm-btn-danger-sm {
+  background: #bf0000;
+}
+.adm-djcreds {
+  border-color: #0a0a0a;
+}
+.adm-djcreds code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  line-height: 1.6;
+  user-select: all;
+}
+.adm-djcreds .adm-btn-dark-sm {
+  align-self: flex-start;
+}
+.adm-djlist__title {
+  margin-top: 12px;
+}
 
 /* Toast */
 .adm-toast {
