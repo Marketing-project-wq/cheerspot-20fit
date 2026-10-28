@@ -3,16 +3,15 @@ import { pick, REASONS, STRINGS } from './strings.js'
 import {
   DEFAULT_EVENT,
   DEFAULT_SETTINGS,
-  DEFAULT_WORDS,
   POOL,
   createInitialItems,
   focusIdOf,
   cheerUrl,
   makeItem,
-  scanText,
   visibleItems,
 } from './data.js'
 import { readSaved, saveValue } from './storage.js'
+import { DEFAULT_WORD_LEVELS, LEVELS, needsReview, scanWords } from './badWords.js'
 import { fetchRecentCheers, getAudioUrl, updateCheerStatus } from '../../lib/cheers.js'
 
 // New cheers and status changes from the booth show up within a few seconds, without a refresh.
@@ -56,8 +55,16 @@ export default function useModeration({ lang, liveFeed }) {
     saveValue('cz-admin-event', eventName)
   }, [events, eventName])
   const [maxDur, setMaxDur] = useState(30)
-  const [words, setWords] = useState(DEFAULT_WORDS)
+  // Moderation words by level ({ high, medium, low }), kept in this browser across refresh.
+  const [words, setWords] = useState(() => {
+    const saved = readSaved('cz-admin-words', null)
+    return saved && LEVELS.every(l => Array.isArray(saved[l])) ? saved : DEFAULT_WORD_LEVELS
+  })
+  useEffect(() => {
+    saveValue('cz-admin-words', words)
+  }, [words])
   const [wordIn, setWordIn] = useState('')
+  const [wordLevel, setWordLevel] = useState('high')
   const [page, setPage] = useState(() => {
     const saved = readSaved('cz-admin-page', 'mod')
     return PAGES.includes(saved) ? saved : 'mod'
@@ -104,7 +111,7 @@ export default function useModeration({ lang, liveFeed }) {
       if (st.autoApprove) {
         rows
           .filter(row => row.status === 'pending' && row.transcript && !saving.current.has(row.id))
-          .filter(row => scanText(row.transcript, w).hits.length === 0)
+          .filter(row => !needsReview(scanWords(row.transcript, w)))
           .forEach(row => autoApprove(row.id))
       }
     }
@@ -157,7 +164,7 @@ export default function useModeration({ lang, liveFeed }) {
     setItems(prev =>
       prev.map(x => {
         if (x.id !== id) return x
-        if (x.status === 'pending' && st.autoApprove && scanText(x.text, w).hits.length === 0) {
+        if (x.status === 'pending' && st.autoApprove && !needsReview(scanWords(x.text, w))) {
           return { ...x, transcribing: false, status: 'approved', autoApproved: true }
         }
         return { ...x, transcribing: false }
@@ -174,7 +181,7 @@ export default function useModeration({ lang, liveFeed }) {
   const applyAuto = () => {
     const w = live.current.words
     live.current.items
-      .filter(x => x.status === 'pending' && !x.transcribing && x.text && scanText(x.text, w).hits.length === 0)
+      .filter(x => x.status === 'pending' && !x.transcribing && x.text && !needsReview(scanWords(x.text, w)))
       .forEach(x => autoApprove(x.id))
   }
 
@@ -308,14 +315,22 @@ export default function useModeration({ lang, liveFeed }) {
     if (k === 'autoApprove' && v) applyAuto()
   }
 
+  // A word lives in one level only: adding it to another level moves it there.
   const addWord = () => {
-    const w = wordIn.trim().toLowerCase()
-    if (!w || live.current.words.includes(w)) return
-    setWords(list => [...list, w])
+    const w = wordIn.trim().toLowerCase().replace(/\s+/g, ' ')
+    if (!w) return
+    setWords(all => {
+      const next = {}
+      for (const l of LEVELS) next[l] = all[l].filter(x => x !== w)
+      next[wordLevel] = [...next[wordLevel], w]
+      return next
+    })
     setWordIn('')
   }
 
-  const removeWord = w => setWords(list => list.filter(x => x !== w))
+  const removeWord = (level, w) => setWords(all => ({ ...all, [level]: all[level].filter(x => x !== w) }))
+
+  const resetWords = () => setWords(DEFAULT_WORD_LEVELS)
 
   // Adds the typed event to the list and makes it the active one, which updates the QR.
   const addEvent = () => {
@@ -393,8 +408,11 @@ export default function useModeration({ lang, liveFeed }) {
     words,
     wordIn,
     setWordIn,
+    wordLevel,
+    setWordLevel,
     addWord,
     removeWord,
+    resetWords,
     page,
     setPage,
     tab,

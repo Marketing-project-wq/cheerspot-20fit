@@ -1,6 +1,12 @@
 import { MAX_DURS } from './data.js'
 import { pick, STRINGS, TOGGLES } from './strings.js'
 
+const WORD_GROUPS = [
+  { level: 'high', title: 'wordsHigh', sub: 'wordsHighSub' },
+  { level: 'medium', title: 'wordsMedium', sub: 'wordsMediumSub' },
+  { level: 'low', title: 'wordsLow', sub: 'wordsLowSub' },
+]
+
 export default function SettingsPanel({ m, lang }) {
   const S = STRINGS[lang] || STRINGS.id
   return (
@@ -91,15 +97,34 @@ export default function SettingsPanel({ m, lang }) {
             <span className="adm-settings__title">{S.words}</span>
             <span className="adm-settings__sub">{S.wordsSub}</span>
           </div>
-          <div className="adm-chips">
-            {m.words.map(w => (
-              <button key={w} type="button" className="adm-chip" onClick={() => m.removeWord(w)}>
-                {w}
-                <span className="adm-chip__x">×</span>
-              </button>
-            ))}
-          </div>
+          {WORD_GROUPS.map(g => (
+            <div key={g.level} className="adm-words__group">
+              <div className="adm-words__head">
+                {S[g.title]} ({m.words[g.level].length})<span>{S[g.sub]}</span>
+              </div>
+              <div className={`adm-chips adm-chips--${g.level}`}>
+                {m.words[g.level].map(w => (
+                  <button key={w} type="button" className="adm-chip" onClick={() => m.removeWord(g.level, w)}>
+                    {w}
+                    <span className="adm-chip__x">×</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
           <div className="adm-add">
+            <select
+              className="adm-input-plain adm-words__level"
+              aria-label={S.words}
+              value={m.wordLevel}
+              onChange={e => m.setWordLevel(e.target.value)}
+            >
+              {WORD_GROUPS.map(g => (
+                <option key={g.level} value={g.level}>
+                  {S[g.title]}
+                </option>
+              ))}
+            </select>
             <input
               type="text"
               className="adm-input-plain"
@@ -115,6 +140,9 @@ export default function SettingsPanel({ m, lang }) {
               {S.add}
             </button>
           </div>
+          <button type="button" className="adm-link adm-words__reset" onClick={m.resetWords}>
+            {S.wordsReset}
+          </button>
         </div>
       </div>
     </div>

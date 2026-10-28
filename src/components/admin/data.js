@@ -4,7 +4,6 @@ import { pick, REASONS, STRINGS } from './strings.js'
 export const HOUR = 3600000
 export const MAX_DURS = [15, 30, 45]
 export const DEFAULT_SETTINGS = { autoFlag: true, needTx: true, open: true, autoApprove: false }
-export const DEFAULT_WORDS = ['bego', 'anjir', 'goblok', 'bangsat']
 export const DEFAULT_EVENT = 'HYROX Sportfest Vol.3'
 
 export const pad = n => String(n).padStart(2, '0')
@@ -46,50 +45,6 @@ export const POOL = [
 // Starts empty: real cheers come from Supabase once it is connected.
 export function createInitialItems() {
   return []
-}
-
-// Word matching: lowercase, leetspeak to letters, collapse repeated letters (anjirrrr -> anjir).
-const norm = s =>
-  s
-    .toLowerCase()
-    .replace(/[4@]/g, 'a')
-    .replace(/[1!|]/g, 'i')
-    .replace(/3/g, 'e')
-    .replace(/0/g, 'o')
-    .replace(/5|\$/g, 's')
-    .replace(/7/g, 't')
-    .replace(/[^a-z]/g, '')
-    .replace(/(.)\1+/g, '$1')
-
-const hitWord = (tok, words) => {
-  const n = norm(tok)
-  if (!n) return null
-  return (
-    words.find(w => {
-      const wn = norm(w)
-      return wn && (n === wn || (wn.length >= 4 && n.startsWith(wn)))
-    }) || null
-  )
-}
-
-// Returns the flagged words found in a transcript and the text split into highlight tokens.
-export function scanText(text, words) {
-  const src = String(text || '')
-  const parts = src.split(/(\s+|[.,!?;:"“”()]+)/).filter(p => p !== '')
-  const hits = new Set()
-  const tokens = parts.map(p => {
-    const w = /[\w@$!|]/.test(p) && !/^[.,!?;:"“”()\s]+$/.test(p) ? hitWord(p, words) : null
-    if (w) hits.add(w)
-    return { t: p, f: !!w }
-  })
-  // Multi-word phrases from the list.
-  const low = ' ' + src.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ') + ' '
-  words
-    .filter(w => /\s/.test(w))
-    .forEach(w => {
-      if (low.includes(' ' + w.toLowerCase().trim().replace(/\s+/g, ' ') + ' ')) hits.add(w)
-    })
-  return { hits: [...hits], tokens }
 }
 
 export const visibleItems = (items, tab, q) => {

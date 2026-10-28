@@ -1,12 +1,15 @@
 import { REASONS, pick, STRINGS } from './strings.js'
 import { BellIcon, CheckIcon, Svg } from './icons.jsx'
-import { fmt, HOUR, hm, scanText, statusInfo, waveBars } from './data.js'
+import { fmt, HOUR, hm, statusInfo, waveBars } from './data.js'
+import { needsReview, scanWords } from './badWords.js'
 
 export default function CheerCard({ x, lang, now, words, settings, focused, playing, pos, picking, actions }) {
   const S = STRINGS[lang] || STRINGS.id
-  const scan = scanText(x.text, words)
-  const flagged = settings.autoFlag && scan.hits.length > 0 && !x.transcribing
-  const segs = flagged ? scan.tokens : [{ t: x.text, f: false }]
+  // High words flag the card red, medium orange; low words are only highlighted.
+  const scan = scanWords(x.text, words)
+  const marking = settings.autoFlag && !x.transcribing
+  const flagged = marking && needsReview(scan)
+  const segs = marking ? scan.tokens : [{ t: x.text, level: null }]
   // Yes is held until the transcript is ready when that setting is on.
   const waiting = x.transcribing && settings.needTx
   const isPending = x.status === 'pending'
@@ -23,21 +26,21 @@ export default function CheerCard({ x, lang, now, words, settings, focused, play
     fn()
   }
 
-  const cls = ['adm-card', flagged && 'is-flagged', focused && 'is-focused', x.isNew && 'is-new']
+  const cls = ['adm-card', flagged && 'is-flagged', flagged && `is-flag-${scan.level}`, focused && 'is-focused', x.isNew && 'is-new']
     .filter(Boolean)
     .join(' ')
 
   return (
     <article className={cls} onClick={actions.onFocus}>
       {flagged && (
-        <div className="adm-card__flag">
+        <div className={`adm-card__flag is-${scan.level}`}>
           <Svg size={14} strokeWidth={2.4} stroke="currentColor">
             <path d="M12 3L2 20h20z" />
             <path d="M12 10v4" />
             <path d="M12 17v.5" />
           </Svg>
           <span>
-            {scan.hits.length} {S.flagged}
+            {scan.hits.filter(h => h.level !== 'low').length} {scan.level === 'high' ? S.flaggedHigh : S.flagged}
           </span>
         </div>
       )}
@@ -78,8 +81,8 @@ export default function CheerCard({ x, lang, now, words, settings, focused, play
           <p className="adm-card__quote">
             “
             {segs.map((g, i) =>
-              g.f ? (
-                <mark key={i} className="adm-mark">
+              g.level ? (
+                <mark key={i} className={`adm-mark is-${g.level}`}>
                   {g.t}
                 </mark>
               ) : (

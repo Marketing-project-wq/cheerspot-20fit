@@ -791,6 +791,9 @@
 .adm-card.is-flagged {
   border-color: #eba6a6;
 }
+.adm-card.is-flag-medium {
+  border-color: #f3c28b;
+}
 .adm-card.is-focused {
   border-color: #0a0a0a;
   box-shadow: 0 0 0 4px #bf0000, 0 8px 24px rgba(10, 10, 10, 0.08);
@@ -808,6 +811,10 @@
   padding: 6px 10px;
   font-size: 12px;
   font-weight: 700;
+}
+.adm-card__flag.is-medium {
+  background: #fff4e5;
+  color: #9a4a00;
 }
 .adm-card__flag span {
   flex: 1;
@@ -906,6 +913,49 @@
   border-radius: 4px;
   text-decoration: underline wavy #bf0000;
   text-underline-offset: 4px;
+}
+/* Severity: high red (default above), medium orange, low a soft highlight that does not flag. */
+.adm-mark.is-medium {
+  background: #fff0dc;
+  color: #b45309;
+  text-decoration-color: #ea7a00;
+}
+.adm-mark.is-low {
+  background: #fff7cc;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+.adm-chips--medium .adm-chip {
+  background: #fff0dc;
+  color: #9a4a00;
+}
+.adm-chips--low .adm-chip {
+  background: #f1f1ea;
+  color: #3a3a35;
+}
+.adm-words__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.adm-words__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.adm-words__head span {
+  color: #77776f;
+  font-weight: 500;
+}
+.adm-words__reset {
+  align-self: flex-start;
+}
+.adm-words__level {
+  width: auto;
+  flex: none;
 }
 .adm-transcribing {
   display: flex;
