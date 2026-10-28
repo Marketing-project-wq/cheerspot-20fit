@@ -11,16 +11,7 @@ function initialsOf(name) {
     .toUpperCase()
 }
 
-function ShortcutRow({ label, keyLabel }) {
-  return (
-    <div className="adm-shortcuts__row">
-      <span>{label}</span>
-      <span className="adm-kbd">{keyLabel}</span>
-    </div>
-  )
-}
-
-export default function Sidebar({ wide, showShortcuts, lang, setLang, page, setPage, counts, adminName, onLogout }) {
+export default function Sidebar({ wide, lang, setLang, page, setPage, counts, adminName, onLogout }) {
   const S = STRINGS[lang] || STRINGS.id
   const name = adminName || 'Admin 20FIT'
   const avatar = (
@@ -67,17 +58,6 @@ export default function Sidebar({ wide, showShortcuts, lang, setLang, page, setP
       </nav>
 
       {wide && <div className="adm-aside__spacer" />}
-
-      {showShortcuts && (
-        <div className="adm-shortcuts">
-          <div className="adm-shortcuts__title">{S.shortcuts}</div>
-          <ShortcutRow label={S.scSelect} keyLabel="J/K" />
-          <ShortcutRow label={S.scListen} keyLabel={S.space} />
-          <ShortcutRow label={S.scYes} keyLabel="A" />
-          <ShortcutRow label={S.scNo} keyLabel="R" />
-          <ShortcutRow label={S.undo} keyLabel="Z" />
-        </div>
-      )}
 
       {wide && (
         <div className="adm-footer">

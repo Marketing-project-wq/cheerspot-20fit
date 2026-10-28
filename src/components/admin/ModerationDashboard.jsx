@@ -13,7 +13,6 @@ export default function ModerationDashboard({ adminName, liveFeed, onLogout }) {
   const { lang, setLang } = useT()
   const S = STRINGS[lang] || STRINGS.id
   const wide = useMediaQuery('(min-width: 900px)')
-  const tall = useMediaQuery('(min-width: 900px) and (min-height: 620px)')
   const m = useModeration({ lang, liveFeed })
 
   const counts = {
@@ -25,7 +24,6 @@ export default function ModerationDashboard({ adminName, liveFeed, onLogout }) {
     <div className="adm-shell">
       <Sidebar
         wide={wide}
-        showShortcuts={tall && m.page === 'mod'}
         lang={lang}
         setLang={setLang}
         page={m.page}
