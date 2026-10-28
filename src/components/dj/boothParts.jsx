@@ -62,7 +62,9 @@ export function Slider({ label, value, min, max, step = 1, format, onChange, id 
 
 export function formatTime(seconds) {
   const total = Math.max(0, Math.round(Number(seconds) || 0))
-  const minutes = Math.floor(total / 60)
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
   const rest = String(total % 60).padStart(2, '0')
-  return `${minutes}:${rest}`
+  // Long YouTube mixes show hours, like 1:29:22.
+  return hours ? `${hours}:${String(minutes).padStart(2, '0')}:${rest}` : `${minutes}:${rest}`
 }

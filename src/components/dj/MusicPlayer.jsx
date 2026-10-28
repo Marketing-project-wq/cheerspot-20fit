@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createLocalMusic, registerMusicSource, setMusicVolume } from '../../lib/ducking.js'
 import { createYouTubeSource, parseYouTubeInput } from '../../lib/youtubePlayer.js'
 import { searchYouTube } from '../../lib/youtubeSearch.js'
-import { Icon, Slider } from './boothParts.jsx'
+import { formatTime, Icon, Slider } from './boothParts.jsx'
 import { readStored, writeStored } from './boothStorage.js'
 
 const PLAYLIST_KEY = 'cheerspot.booth.playlist'
@@ -258,6 +258,11 @@ export default function MusicPlayer({ started, onToast }) {
                           <Icon name={current && ytInfo.playing ? 'pause' : 'play'} size={30} />
                         </span>
                         {current && <span className="booth-ytcard__badge">Now playing</span>}
+                        {item.live ? (
+                          <span className="booth-ytcard__time is-live">LIVE</span>
+                        ) : (
+                          item.durationSec > 0 && <span className="booth-ytcard__time">{formatTime(item.durationSec)}</span>
+                        )}
                       </span>
                       <span className="booth-ytcard__title">{item.title}</span>
                       <span className="booth-ytcard__channel">{item.channel}</span>

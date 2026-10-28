@@ -51,12 +51,39 @@ async function handle(req: Request): Promise<Response> {
   if (!res.ok) return new Response('YouTube search failed', { status: 502 })
 
   const body = await res.json()
-  const items = (body.items ?? []).map((item: any) => ({
-    id: item.id?.videoId,
-    title: item.snippet?.title ?? '',
-    channel: item.snippet?.channelTitle ?? '',
-    thumb: item.snippet?.thumbnails?.medium?.url ?? item.snippet?.thumbnails?.default?.url ?? '',
-  })).filter((item: any) => item.id)
+  const items = (body.items ?? [])
+    // Upcoming streams cannot be played yet.
+    .filter((item: any) => item.id?.videoId && item.snippet?.liveBroadcastContent !== 'upcoming')
+    .map((item: any) => ({
+      id: item.id.videoId,
+      title: item.snippet?.title ?? '',
+      channel: item.snippet?.channelTitle ?? '',
+      thumb: item.snippet?.thumbnails?.medium?.url ?? item.snippet?.thumbnails?.default?.url ?? '',
+      live: item.snippet?.liveBroadcastContent === 'live',
+      durationSec: null as number | null,
+    }))
+
+  // Durations come from a second call (1 quota unit). If it fails, results still show without them.
+  if (items.length) {
+    const details = new URLSearchParams({ part: 'contentDetails', id: items.map((item: any) => item.id).join(','), key: apiKey })
+    const detailRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?${details}`).catch(() => null)
+    if (detailRes?.ok) {
+      const detailBody = await detailRes.json()
+      const byId = new Map((detailBody.items ?? []).map((v: any) => [v.id, parseDuration(v.contentDetails?.duration)]))
+      items.forEach((item: any) => {
+        item.durationSec = byId.get(item.id) ?? null
+      })
+    }
+  }
 
   return Response.json({ items })
+}
+
+// ISO 8601 duration such as PT1H29M22S. Live streams report P0D, which becomes null.
+function parseDuration(value: unknown): number | null {
+  const m = typeof value === 'string' ? value.match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/) : null
+  if (!m) return null
+  const [, d, h, min, sec] = m.map(part => Number(part) || 0)
+  const total = d * 86400 + h * 3600 + min * 60 + sec
+  return total > 0 ? total : null
 }
