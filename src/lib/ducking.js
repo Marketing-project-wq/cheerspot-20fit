@@ -33,6 +33,8 @@ let duckedMusic = null
 
 const pending = []
 let running = false
+// The job taken from pending: loading its audio, ducking, then playing. Cleared when it ends.
+let activeJob = null
 let playback = null
 const bufferCache = new Map()
 const subscribers = new Set()
@@ -101,10 +103,19 @@ export function registerMusicSource(name, adapter) {
 
 // Queues a cheer. The cheer needs an id and either audio_url or getAudioUrl() (for short-lived links).
 // Handlers: onStart (audio begins), onEnd(reason), onError(err).
+// A cheer that is already waiting, loading or playing is not queued again. Returns false then.
 export function playCheer(cheer, handlers = {}) {
+  if (activeJob?.cheer.id === cheer.id || pending.some(job => job.cheer.id === cheer.id)) return false
   pending.push({ cheer, handlers })
   emit()
   runQueue().catch(err => console.error('Booth queue failed', err))
+  return true
+}
+
+// Downloads and decodes a cheer's audio ahead of time, so it starts without a wait. Errors are
+// ignored here; playing the cheer retries and reports them.
+export function preloadCheer(cheer) {
+  loadBuffer(cheer).catch(() => {})
 }
 
 export function pauseCheer() {
@@ -281,11 +292,14 @@ async function runQueue() {
         }
       }
       const job = pending.shift()
+      activeJob = job
       emit()
       let buffer
       try {
         buffer = await loadBuffer(job.cheer)
       } catch (err) {
+        activeJob = null
+        emit()
         job.handlers.onError?.(err)
         continue
       }
@@ -294,6 +308,8 @@ async function runQueue() {
       await Promise.race([ducking, delay(settings.fadeDownMs * CHEER_OVERLAP)])
       const reason = await playCheerAudio(job, buffer)
       await ducking
+      activeJob = null
+      emit()
       job.handlers.onEnd?.(reason)
     }
   } finally {
@@ -443,7 +459,10 @@ function snapshot() {
     paused: p ? p.paused : false,
     position: p ? positionOf(p) : 0,
     duration: p ? p.buffer.duration : 0,
-    queued: pending.map(job => job.cheer.id),
+    // Waiting cheers plus the one loading or ducking, so the AUTO scheduler never picks them twice.
+    queued: [...(activeJob && !p ? [activeJob.cheer.id] : []), ...pending.map(job => job.cheer.id)],
+    // True from the moment a cheer is taken until it ends, including while its audio loads.
+    busy: !!activeJob,
   }
 }
 

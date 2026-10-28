@@ -1,5 +1,17 @@
-import { fmt, pad } from './data.js'
+import { fmt, hm, pad } from './data.js'
 import { STRINGS } from './strings.js'
+
+// Delete button for queue and history rows. Asks first: the voice note is removed for good.
+function DeleteButton({ m, x, S }) {
+  const onClick = () => {
+    if (window.confirm(S.delConfirm.replace('{sender}', x.sender).replace('{athlete}', x.athlete))) m.removeCheer(x.id)
+  }
+  return (
+    <button type="button" className="adm-del" aria-label={S.del} title={S.del} onClick={onClick}>
+      ×
+    </button>
+  )
+}
 
 function ListHeader({ title, sub }) {
   return (
@@ -32,6 +44,7 @@ export function QueuePanel({ m, lang }) {
             <button type="button" className="adm-btn-outline" onClick={() => m.pullBack(x.id)}>
               {S.pullBack}
             </button>
+            <DeleteButton m={m} x={x} S={S} />
           </div>
         ))}
         {queue.length === 0 && <p className="adm-list__empty">{S.queueEmpty}</p>}
@@ -49,7 +62,7 @@ export function HistoryPanel({ m, lang }) {
       <div className="adm-list">
         {played.map(x => (
           <div key={x.id} className="adm-row">
-            <span className="adm-row__index adm-row__index--time">{x.playedAt || '--:--'}</span>
+            <span className="adm-row__index adm-row__index--time" title={S.sentAt}>{hm(x.ts)}</span>
             <div className="adm-row__who">
               <span className="adm-label">{S.forAth}</span>
               <span className="adm-row__athlete">{x.athlete}</span>
@@ -61,6 +74,7 @@ export function HistoryPanel({ m, lang }) {
             <button type="button" className="adm-btn-play" onClick={() => m.requeue(x.id)}>
               {S.playAgain}
             </button>
+            <DeleteButton m={m} x={x} S={S} />
           </div>
         ))}
         {played.length === 0 && <p className="adm-list__empty">{S.histEmpty}</p>}

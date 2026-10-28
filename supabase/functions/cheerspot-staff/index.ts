@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
-// DJ accounts for CheerSpot, managed by a superadmin from the dashboard. Creating sign-ins needs the
-// service role, so this runs on the server. The auth project is shared with other 20FIT systems:
+// Superadmin tools for CheerSpot: DJ accounts (managed from the dashboard) and deleting a cheer.
+// Both need the service role, so this runs on the server. The auth project is shared with other 20FIT systems:
 // accounts made here carry app_metadata.cheerspot = true, and list, reset and remove only touch those.
 const MIN_PASSWORD = 8
 // DJs sign in with a username; Supabase stores it as username@DJ_EMAIL_DOMAIN (our own domain, no mail
@@ -81,6 +81,21 @@ async function handle(req: Request): Promise<Response> {
     }
     const { error: deleteError } = await admin.auth.admin.deleteUser(id)
     if (deleteError) return fail(502, 'remove_failed')
+    return Response.json({ ok: true })
+  }
+
+  // Removes a cheer for good: its audio file, then its row. Superadmin only, like everything here.
+  if (action === 'delete_cheer') {
+    const id = typeof input.id === 'string' ? input.id : ''
+    const { data: row, error: rowError } = await admin.from('cheerspot_cheers').select('id, audio_path').eq('id', id).maybeSingle()
+    if (rowError) return fail(502, 'delete_failed')
+    if (!row) return fail(404, 'not_found')
+    if (row.audio_path) {
+      const { error: fileError } = await admin.storage.from('cheerspot-audio').remove([row.audio_path])
+      if (fileError) return fail(502, 'delete_failed')
+    }
+    const { error: deleteError } = await admin.from('cheerspot_cheers').delete().eq('id', id)
+    if (deleteError) return fail(502, 'delete_failed')
     return Response.json({ ok: true })
   }
 

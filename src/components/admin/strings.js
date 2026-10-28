@@ -23,6 +23,9 @@ const COPY = {
 
   // Moderation shell
   logout: ['Keluar', 'Log out'],
+  del: ['Hapus cheer', 'Delete cheer'],
+  sentAt: ['Waktu dikirim', 'Sent at'],
+  delConfirm: ['Hapus cheer dari {sender} untuk {athlete}? Voice note dan transkripnya ikut terhapus permanen.', 'Delete the cheer from {sender} for {athlete}? The voice note and transcript are removed for good.'],
   role: ['SUPER ADMIN', 'SUPER ADMIN'],
   shortcuts: ['PINTASAN', 'SHORTCUTS'],
   scSelect: ['Pilih kartu', 'Select card'],
@@ -42,7 +45,6 @@ const COPY = {
   yesAfter: ['Yes aktif setelah transkrip siap', 'Yes unlocks once the transcript is ready'],
   reasonHdr: ['Alasan ditolak · dikirim ke pengirim', 'Rejection reason · sent to sender'],
   cancel: ['Batal', 'Cancel'],
-  notified: ['Pengirim sudah diberi tahu', 'Sender has been notified'],
   restore: ['Kembalikan ke review', 'Back to review'],
   allClear: ['Semua beres', 'All clear'],
   emptySub: ['Tidak ada cheer di sini. Cheer baru akan muncul otomatis.', 'No cheers here. New cheers appear automatically.'],
@@ -96,7 +98,6 @@ const COPY = {
   stApproved: ['Disetujui · di antrean DJ', 'Approved · in DJ queue'],
   stRejected: ['Ditolak', 'Rejected'],
   stPlayed: ['Sudah diputar', 'Played'],
-  stExpired: ['Kedaluwarsa · tidak diputar', 'Expired · not played'],
   stAuto: ['Otomatis · di antrean DJ', 'Auto · in DJ queue'],
   noReason: ['tanpa alasan', 'no reason'],
   justNow: ['baru saja', 'just now'],
@@ -107,8 +108,8 @@ const COPY = {
     (a) => 'Approved · cheer for ' + a + ' added to DJ queue',
   ],
   toastRejected: [
-    (s, r) => 'Ditolak · ' + s + ' diberi tahu: ' + r,
-    (s, r) => 'Rejected · ' + s + ' notified: ' + r,
+    (s, r) => 'Ditolak · cheer dari ' + s + ': ' + r,
+    (s, r) => 'Rejected · cheer from ' + s + ': ' + r,
   ],
 }
 

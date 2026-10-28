@@ -1,6 +1,6 @@
 import { REASONS, pick, STRINGS } from './strings.js'
-import { BellIcon, CheckIcon, Svg } from './icons.jsx'
-import { fmt, HOUR, hm, statusInfo, waveBars } from './data.js'
+import { CheckIcon, Svg } from './icons.jsx'
+import { fmt, hm, statusInfo, waveBars } from './data.js'
 import { needsReview, scanWords } from './badWords.js'
 
 export default function CheerCard({ x, lang, now, words, settings, focused, playing, pos, picking, actions }) {
@@ -14,11 +14,9 @@ export default function CheerCard({ x, lang, now, words, settings, focused, play
   const waiting = x.transcribing && settings.needTx
   const isPending = x.status === 'pending'
   const frac = playing && x.dur ? pos / x.dur : 0
-  const status = statusInfo(x, now, lang)
+  const status = statusInfo(x, lang)
   const mins = (now - x.ts) / 60000
   const ago = mins < 1 ? S.justNow : Math.floor(mins) + S.minAgo
-  const expired = x.status === 'approved' && now - x.ts >= HOUR
-  const notified = x.status === 'rejected' || expired
   const canRestore = x.status === 'approved' || x.status === 'rejected'
 
   const stop = fn => e => {
@@ -53,6 +51,9 @@ export default function CheerCard({ x, lang, now, words, settings, focused, play
           </span>
           <span className="adm-card__spacer" />
           <span className="adm-dur">{fmt(x.dur)}</span>
+          <button type="button" className="adm-del" aria-label={S.del} title={S.del} onClick={stop(actions.onDelete)}>
+            ×
+          </button>
         </div>
 
         <div className="adm-card__people">
@@ -175,12 +176,6 @@ export default function CheerCard({ x, lang, now, words, settings, focused, play
               <span className="adm-status__dot" />
               <span className="adm-status__label">{status.label}</span>
             </div>
-            {notified && (
-              <div className="adm-notified">
-                <BellIcon />
-                {S.notified}
-              </div>
-            )}
             {canRestore && (
               <button type="button" className="adm-restore" onClick={stop(actions.onRestore)}>
                 {S.restore}

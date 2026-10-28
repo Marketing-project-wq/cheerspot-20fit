@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js'
 
-// Superadmin only: DJ accounts, through the cheerspot-staff Edge Function (it holds the service role).
+// Superadmin only: DJ accounts and cheer deletion, through the cheerspot-staff Edge Function
+// (it holds the service role).
 // Errors carry a short code (username_taken, weak_password, invalid_username, not_found) in err.code.
 async function call(body) {
   if (!supabase) throw new Error('Supabase is not configured')
@@ -18,3 +19,6 @@ export const listDjAccounts = () => call({ action: 'list' }).then(data => data.a
 export const createDjAccount = ({ name, username, password }) => call({ action: 'create', name, username, password })
 export const resetDjPassword = (id, password) => call({ action: 'reset', id, password })
 export const removeDjAccount = id => call({ action: 'remove', id })
+
+// Deletes a cheer and its voice note for good.
+export const deleteCheer = id => call({ action: 'delete_cheer', id })

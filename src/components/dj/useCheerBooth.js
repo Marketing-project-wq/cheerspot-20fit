@@ -4,6 +4,7 @@ import {
   getBoothStatus,
   pauseCheer,
   playCheer,
+  preloadCheer,
   restartCheer,
   resumeCheer,
   setMasterVolume,
@@ -107,7 +108,8 @@ export default function useCheerBooth() {
       setNow(t)
       if (modeRef.current !== 'auto') return
       const s = statusRef.current
-      if (s.phase === 'cheer' || t < nextAtRef.current) return
+      // busy covers the seconds while a cheer's audio loads, so it is never picked twice.
+      if (s.phase === 'cheer' || s.busy || t < nextAtRef.current) return
       const next = itemsRef.current.find(
         item => item.status === 'approved' && !s.queued.includes(item.id) && !failedIds.current.has(item.id),
       )
@@ -188,8 +190,18 @@ export default function useCheerBooth() {
     countdown = 'Manual mode: press Play to start a cheer'
   }
 
+  // Fetch the next two cheers' audio in the background, so they start without a wait.
+  useEffect(() => {
+    if (!started) return
+    items
+      .filter(item => item.status === 'approved' && !failedIds.current.has(item.id))
+      .slice(0, 2)
+      .forEach(preloadCheer)
+  }, [started, items])
+
   let pill = { label: 'Standby', tone: 'idle' }
-  if (status.phase === 'cheer') pill = { label: 'Cheer playing', tone: 'cheer' }
+  if (status.phase === 'cheer') pill = status.paused ? { label: 'Cheer paused', tone: 'duck' } : { label: 'Cheer playing', tone: 'cheer' }
+  else if (status.busy && !status.ducked) pill = { label: 'Loading cheer', tone: 'duck' }
   else if (status.ducked) pill = { label: 'Ducking', tone: 'duck' }
   else if (status.musicPlaying) pill = { label: 'Music', tone: 'music' }
 

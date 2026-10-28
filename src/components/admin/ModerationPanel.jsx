@@ -117,6 +117,9 @@ export default function ModerationPanel({ m, lang }) {
               onReason: key => m.decide(x.id, 'rejected', key),
               onCancelPick: () => m.setPicking(null),
               onRestore: () => m.restore(x.id),
+              onDelete: () => {
+                if (window.confirm(S.delConfirm.replace('{sender}', x.sender).replace('{athlete}', x.athlete))) m.removeCheer(x.id)
+              },
             }}
           />
         ))}

@@ -13,6 +13,7 @@ import {
 import { keepValue, readKept, readSaved, saveValue } from './storage.js'
 import { DEFAULT_WORD_LEVELS, LEVELS, applyWordChanges, needsReview, scanWords } from './badWords.js'
 import { fetchRecentCheers, getAudioUrl, updateCheerStatus } from '../../lib/cheers.js'
+import { deleteCheer } from '../../lib/staff.js'
 
 // New cheers and status changes from the booth show up within a few seconds, without a refresh.
 const POLL_MS = 3000
@@ -88,6 +89,8 @@ export default function useModeration({ lang, liveFeed }) {
     saveValue('cz-admin-page', page)
   }, [page])
 
+  // Cheers being deleted. Polls leave them out until the delete settles.
+  const deleting = useRef(new Set())
   // Status writes still in flight. Until one settles, a poll keeps the local status, not the server's.
   const saving = useRef(new Map())
   const saveStatus = (id, status, reason = null) => {
@@ -113,7 +116,7 @@ export default function useModeration({ lang, liveFeed }) {
       loadedOnce.current = true
       setItems(prev => {
         const local = new Map(prev.map(x => [x.id, x]))
-        return rows.map(row => {
+        return rows.filter(row => !deleting.current.has(row.id)).map(row => {
           const item = fromRow(row)
           const kept = local.get(item.id)
           if (!kept) return arrived.includes(item.id) ? { ...item, isNew: true } : item
@@ -300,7 +303,7 @@ export default function useModeration({ lang, liveFeed }) {
     patch(id, { status, reason: reason || null })
     saveStatus(id, status, reason || null).catch(() => {
       patch(id, { status: 'pending', reason: null })
-      setToast({ id, prev: 'pending', msg: pick(['Gagal menyimpan. Coba lagi.', 'Could not save. Try again.'], L.lang), color: '#BF0000' })
+      setToast({ id, prev: null, msg: pick(['Gagal menyimpan. Coba lagi.', 'Could not save. Try again.'], L.lang), color: '#BF0000' })
     })
     setPicking(null)
     const S = STRINGS[L.lang] || STRINGS.id
@@ -318,6 +321,11 @@ export default function useModeration({ lang, liveFeed }) {
   const undo = () => {
     const t = live.current.toast
     if (!t) return
+    // Error toasts have nothing to undo.
+    if (!t.prev) {
+      setToast(null)
+      return
+    }
     patch(t.id, { status: t.prev, reason: null })
     saveStatus(t.id, t.prev).catch(() => {})
     setToast(null)
@@ -369,9 +377,36 @@ export default function useModeration({ lang, liveFeed }) {
     setCopied(true)
   }
 
-  const pullBack = id => patch(id, { status: 'pending' })
-  const requeue = id => patch(id, { status: 'approved', ts: Date.now() })
-  const restore = id => patch(id, { status: 'pending', reason: null })
+  // Status moves from the queue, history and cards are saved like Yes and No. A failed save puts
+  // the old status back and says so.
+  const move = (id, status, extra = {}) => {
+    const it = live.current.items.find(x => x.id === id)
+    if (!it) return
+    const before = { status: it.status, reason: it.reason ?? null }
+    patch(id, { status, reason: null, ...extra })
+    saveStatus(id, status).catch(() => {
+      patch(id, before)
+      setToast({ id, prev: null, msg: pick(['Gagal menyimpan. Coba lagi.', 'Could not save. Try again.'], live.current.lang), color: '#BF0000' })
+    })
+  }
+  const pullBack = id => move(id, 'pending')
+  const requeue = id => move(id, 'approved')
+  const restore = id => move(id, 'pending')
+
+  // Deletes a cheer and its voice note for good. It leaves the screen right away; polls skip it
+  // while the delete runs, and it comes back if the delete fails.
+  const removeCheer = id => {
+    const L = live.current
+    if (L.playId === id) stopPlay()
+    deleting.current.add(id)
+    setItems(prev => prev.filter(x => x.id !== id))
+    if (L.focus === id) setFocus(null)
+    deleteCheer(id)
+      .catch(() => {
+        setToast({ id, prev: null, msg: pick(['Gagal menghapus. Coba lagi.', 'Could not delete. Try again.'], L.lang), color: '#BF0000' })
+      })
+      .finally(() => deleting.current.delete(id))
+  }
 
   // Keyboard shortcuts, active on the moderation page only.
   useEffect(() => {
@@ -457,6 +492,7 @@ export default function useModeration({ lang, liveFeed }) {
     copyLink,
     toggleSetting,
     pullBack,
+    removeCheer,
     requeue,
     restore,
   }

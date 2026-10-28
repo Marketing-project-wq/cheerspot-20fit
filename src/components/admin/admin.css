@@ -776,6 +776,23 @@
   background: #fff4e5;
   color: #9a4a00;
 }
+.adm-del {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: 1.5px solid #e3e3dc;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #77776f;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.adm-del:hover {
+  border-color: #bf0000;
+  background: #fff0f0;
+  color: #bf0000;
+}
 .adm-card__flag span {
   flex: 1;
   min-width: 0;
@@ -1118,14 +1135,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.adm-notified {
-  flex: 1 1 100%;
-  font-size: 12px;
-  color: #55554f;
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 .adm-restore {
   flex: 1 1 100%;

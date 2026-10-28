@@ -46,10 +46,12 @@ export default function ModerationDashboard({ adminName, liveFeed, onLogout }) {
         <div className="adm-toast" role="status">
           <span className="adm-toast__dot" style={{ background: m.toast.color }} />
           <span className="adm-toast__msg">{m.toast.msg}</span>
-          <button type="button" className="adm-toast__undo" onClick={m.undo}>
-            {S.undo}
-            <span className="adm-toast__key">Z</span>
-          </button>
+          {m.toast.prev && (
+            <button type="button" className="adm-toast__undo" onClick={m.undo}>
+              {S.undo}
+              <span className="adm-toast__key">Z</span>
+            </button>
+          )}
         </div>
       )}
     </div>
