@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { pick, REASONS, STRINGS } from './strings.js'
 import {
   DEFAULT_EVENT,
@@ -10,8 +10,8 @@ import {
   makeItem,
   visibleItems,
 } from './data.js'
-import { readSaved, saveValue } from './storage.js'
-import { DEFAULT_WORD_LEVELS, LEVELS, needsReview, scanWords } from './badWords.js'
+import { keepValue, readKept, readSaved, saveValue } from './storage.js'
+import { DEFAULT_WORD_LEVELS, LEVELS, applyWordChanges, needsReview, scanWords } from './badWords.js'
 import { fetchRecentCheers, getAudioUrl, updateCheerStatus } from '../../lib/cheers.js'
 
 // New cheers and status changes from the booth show up within a few seconds, without a refresh.
@@ -39,30 +39,44 @@ const PAGES = ['mod', 'queue', 'hist', 'qr', 'dj', 'set']
 // cheer feed, moderation writes and DJ queue would come from the database.
 export default function useModeration({ lang, liveFeed }) {
   const [items, setItems] = useState(createInitialItems)
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS)
-  // Events the admin has entered. The active one drives the QR link. Kept per tab across refresh.
+  // Settings and events are kept in this browser (localStorage), like the word list.
+  const [settings, setSettings] = useState(() => ({ ...DEFAULT_SETTINGS, ...readKept('cz-admin-settings', {}) }))
+  useEffect(() => {
+    keepValue('cz-admin-settings', settings)
+  }, [settings])
+  // Events the admin has entered. The active one drives the QR link.
   const [events, setEvents] = useState(() => {
-    const saved = readSaved('cz-admin-events', null)
+    const saved = readKept('cz-admin-events', null) ?? readSaved('cz-admin-events', null)
     return Array.isArray(saved) && saved.length ? saved : [DEFAULT_EVENT]
   })
   const [eventName, setEventName] = useState(() => {
-    const saved = readSaved('cz-admin-event', DEFAULT_EVENT)
+    const saved = readKept('cz-admin-event', null) ?? readSaved('cz-admin-event', DEFAULT_EVENT)
     return events.includes(saved) ? saved : events[0]
   })
   const [eventIn, setEventIn] = useState('')
   useEffect(() => {
-    saveValue('cz-admin-events', events)
-    saveValue('cz-admin-event', eventName)
+    keepValue('cz-admin-events', events)
+    keepValue('cz-admin-event', eventName)
   }, [events, eventName])
   const [maxDur, setMaxDur] = useState(30)
-  // Moderation words by level ({ high, medium, low }), kept in this browser across refresh.
-  const [words, setWords] = useState(() => {
-    const saved = readSaved('cz-admin-words', null)
-    return saved && LEVELS.every(l => Array.isArray(saved[l])) ? saved : DEFAULT_WORD_LEVELS
+  // Moderation words by level ({ high, medium, low }): the default list plus this admin's changes,
+  // kept in this browser (localStorage) so they survive closing the tab.
+  const [wordChanges, setWordChanges] = useState(() => {
+    const kept = readKept('cz-admin-word-changes', null)
+    if (kept && typeof kept === 'object') return kept
+    // Earlier versions kept the whole list per tab. Carry over words added there.
+    const old = readSaved('cz-admin-words', null)
+    const changes = {}
+    if (old && LEVELS.every(l => Array.isArray(old[l]))) {
+      const base = applyWordChanges(DEFAULT_WORD_LEVELS, {})
+      for (const l of LEVELS) for (const w of old[l]) if (!base[l].includes(w)) changes[w] = l
+    }
+    return changes
   })
   useEffect(() => {
-    saveValue('cz-admin-words', words)
-  }, [words])
+    keepValue('cz-admin-word-changes', wordChanges)
+  }, [wordChanges])
+  const words = useMemo(() => applyWordChanges(DEFAULT_WORD_LEVELS, wordChanges), [wordChanges])
   const [wordIn, setWordIn] = useState('')
   const [wordLevel, setWordLevel] = useState('high')
   const [page, setPage] = useState(() => {
@@ -319,18 +333,13 @@ export default function useModeration({ lang, liveFeed }) {
   const addWord = () => {
     const w = wordIn.trim().toLowerCase().replace(/\s+/g, ' ')
     if (!w) return
-    setWords(all => {
-      const next = {}
-      for (const l of LEVELS) next[l] = all[l].filter(x => x !== w)
-      next[wordLevel] = [...next[wordLevel], w]
-      return next
-    })
+    setWordChanges(c => ({ ...c, [w]: wordLevel }))
     setWordIn('')
   }
 
-  const removeWord = (level, w) => setWords(all => ({ ...all, [level]: all[level].filter(x => x !== w) }))
+  const removeWord = (_level, w) => setWordChanges(c => ({ ...c, [w]: 'off' }))
 
-  const resetWords = () => setWords(DEFAULT_WORD_LEVELS)
+  const resetWords = () => setWordChanges({})
 
   // Adds the typed event to the list and makes it the active one, which updates the QR.
   const addEvent = () => {

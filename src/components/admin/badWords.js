@@ -18,6 +18,15 @@ export const DEFAULT_WORD_LEVELS = {
     'thot', 'hoe', 'tits', 'porn', 'horny', 'cum', 'blowjob', 'handjob', 'dildo', 'jerk off',
     'nigger', 'nigga', 'faggot', 'fag', 'retard', 'retarded', 'tranny', 'dyke', 'chink', 'spic',
     'kys', 'kill yourself', 'go die',
+    // id (added)
+    'memeq', 'ngntd', 'entod', 'jembud', 'pler', 'pelir', 'palkon', 'toked', 'jalang', 'pecun',
+    'bispak', 'germo', 'gigolo', 'kimbek', 'pundek', 'butoh', 'heunceut', 'dancuk', 'cok', 'jamput',
+    'mati aja', 'gue bunuh',
+    // en (added)
+    'fuckin', 'fuckface', 'fuckhead', 'dumbfuck', 'clit', 'boner', 'anal', 'jizz', 'nudes', 'boobs',
+    'hooker', 'prostitute', 'rape', 'rapist', 'molest', 'pedo', 'nazi', 'lesbo', 'shemale', 'gook',
+    'beaner', 'wetback', 'coon', 'kike', 'paki', 'raghead', 'towelhead', 'go kill yourself',
+    'die bitch', 'i will kill you',
   ],
   medium: [
     // id
@@ -32,6 +41,16 @@ export const DEFAULT_WORD_LEVELS = {
     'son of a bitch', 'bastard', 'asshole', 'arsehole', 'ass', 'a$$', 'dumbass', 'jackass', 'prick', 'wanker',
     'bollocks', 'piss off', 'douche', 'douchebag', 'scumbag', 'stfu', 'gtfo', 'wtf', 'screw you', 'moron',
     'stupid',
+    // id (added)
+    'anjeng', 'anjim', 'anying', 'ajig', 'bngst', 'bgsd', 'bjngn', 'brgsk', 'biadab', 'laknat', 'nyet',
+    'kirik', 'wedus', 'sompret', 'semprul', 'ngehe', 'kampang', 'bodat', 'taek', 'tae', 'goblock',
+    'gblg', 'belegug', 'koplok', 'dongo', 'oon', 'bloon', 'bebal', 'pea', 'cangkemmu', 'lambemu',
+    'otak kosong', 'sampah', 'pecundang', 'beban',
+    // en (added)
+    'bullcrap', 'shitface', 'shithole', 'arse', 'asshat', 'assclown', 'fatass', 'tosser', 'knob',
+    'knobhead', 'bellend', 'pillock', 'twit', 'git', 'slag', 'minger', 'jerk', 'imbecile', 'cretin',
+    'numbnuts', 'nutjob', 'psycho', 'freak', 'pig', 'fatso', 'ugly', 'pathetic', 'worthless', 'useless',
+    'trash', 'garbage', 'clown',
   ],
   low: [
     // id
@@ -40,10 +59,26 @@ export const DEFAULT_WORD_LEVELS = {
     // en
     'damn', 'goddamn', 'hell', 'crap', 'bloody', 'bugger', 'pissed', 'sucks', 'loser', 'dumb',
     'shut up', 'fml', 'omfg', 'freaking', 'frick',
+    // id (added)
+    'anjas', 'anjrot', 'busyet', 'bujug', 'asem', 'lebay', 'cupu', 'payah', 'lemah', 'telmi', 'lemot',
+    'jijik',
+    // en (added)
+    'dang', 'darn', 'heck', 'bloody hell', 'sod off', 'noob', 'lame', 'frickin', 'jeez', 'geez',
   ],
 }
 
 const RANK = { high: 3, medium: 2, low: 1 }
+
+// The admin's edits are kept as changes on top of the default list: { word: 'high' | 'medium' |
+// 'low' | 'off' }. New default words then still show up, and the admin's edits are never lost.
+export function applyWordChanges(defaults, changes) {
+  const levelOf = new Map()
+  for (const level of LEVELS) for (const w of defaults[level]) if (!levelOf.has(w)) levelOf.set(w, level)
+  for (const [w, level] of Object.entries(changes || {})) levelOf.set(w, level)
+  const out = { high: [], medium: [], low: [] }
+  for (const [w, level] of levelOf) if (out[level]) out[level].push(w)
+  return out
+}
 
 // Lowercase and leetspeak to letters: 4/@ a, 1/! i, 0 o, 3 e, 5/$ s, 7 t. Other symbols drop out.
 const base = s =>
@@ -59,12 +94,13 @@ const base = s =>
 
 const collapse = s => s.replace(/(.)\1+/g, '$1')
 
-// Whole-word match. A stretched word ("anjiiiing") matches its entry, but a shorter word never
-// matches a longer one: "as" is not "ass", "hel" is not "hell".
+// Whole-word match. A stretched word ("anjiiiing", a letter three or more times) matches its entry.
+// A shorter word never matches a longer one ("as" is not "ass"), and ordinary double letters do not
+// count as stretching ("cook" is not "cok").
 function sameWord(token, word) {
   if (!token || !word) return false
   if (token === word) return true
-  return token.length > word.length && collapse(token) === collapse(word)
+  return token.length > word.length && /(.)\1\1/.test(token) && collapse(token) === collapse(word)
 }
 
 // Builds the matcher for a { high, medium, low } list. Entries with spaces match as phrases.
@@ -115,7 +151,7 @@ export function scanWords(text, levels) {
       // One hit per place in the text, even when several entries match it ("sh!t" is shit and sh1t).
       const key = `${from}-${to}`
       const prev = hits.get(key)
-      if (!prev || RANK[entry.level] > RANK[prev.level]) hits.set(key, { word: entry.raw, level: entry.level })
+      if (!prev || RANK[entry.level] > RANK[prev.level]) hits.set(key, { word: entry.raw, level: entry.level, from, to })
     }
   }
 
@@ -127,9 +163,13 @@ export function scanWords(text, levels) {
     else merged.push({ ...tok })
   }
 
+  // A hit inside a longer one counts once ("go kill yourself" also contains "kill yourself").
+  const all = [...hits.values()]
+  const kept = all.filter(h => !all.some(o => o !== h && o.from <= h.from && o.to >= h.to && o.to - o.from > h.to - h.from))
+
   let level = null
-  for (const hit of hits.values()) if (!level || RANK[hit.level] > RANK[level]) level = hit.level
-  return { tokens: merged, hits: [...hits.values()], level }
+  for (const hit of kept) if (!level || RANK[hit.level] > RANK[level]) level = hit.level
+  return { tokens: merged, hits: kept.map(({ word, level: l }) => ({ word, level: l })), level }
 }
 
 // High and medium words stop auto-approve; low words are only highlighted.
