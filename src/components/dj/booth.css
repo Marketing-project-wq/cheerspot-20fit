@@ -137,6 +137,13 @@
   }
 }
 
+/* Wide screens: the music panel takes about half the width, so YouTube's watch layout fits. */
+@media (min-width: 1440px) {
+  .booth-grid {
+    grid-template-columns: minmax(0, 1.9fr) minmax(320px, 1fr) minmax(320px, 1fr);
+  }
+}
+
 .booth-panel {
   min-width: 0;
   padding: 16px;
@@ -269,7 +276,6 @@
   height: auto;
   min-height: 200px;
   aspect-ratio: 16 / 9;
-  margin-top: 12px;
   border-radius: 12px;
   background: #000;
   opacity: 1;
@@ -284,11 +290,91 @@
 }
 
 /* Search sits right under the tabs, above the video. */
-.booth-search {
+/* YouTube layout. Home: chips and grid above the deck. Watching: video and deck, list after it
+   (beside it when the panel is wide enough). Sizes follow the panel, not the window. */
+.booth-music {
+  container-type: inline-size;
+}
+
+.booth-ytlayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.booth-ytlayout__main,
+.booth-ytlayout__side {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 16px;
+  min-width: 0;
+}
+
+.booth-ytlayout:not(.is-watching) .booth-ytlayout__side {
+  order: -1;
+}
+
+@container (min-width: 760px) {
+  .booth-ytlayout.is-watching {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 40%);
+    align-items: start;
+  }
+
+  .booth-ytlayout.is-watching .booth-deck__controls {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .booth-ytlayout.is-watching .booth-deck__controls .booth-slider {
+    flex: 1 1 200px;
+  }
+}
+
+.booth-ytlayout.is-watching .booth-now-track__label {
+  display: none;
+}
+
+.booth-ytlayout.is-watching .booth-now-track__title {
+  font-size: 1.35rem;
+  line-height: 1.3;
+}
+
+.booth-now-track__channel {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* Watch page list: thumbnail on the left, text on the right, like YouTube's up next column. */
+.booth-ytlayout.is-watching .booth-ytgrid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  max-height: 640px;
+}
+
+.booth-ytlayout.is-watching .booth-ytcard {
+  flex-direction: row;
+  gap: 10px;
+}
+
+.booth-ytlayout.is-watching .booth-ytcard__thumb {
+  flex: 0 0 160px;
+  border-radius: 8px;
+}
+
+.booth-ytlayout.is-watching .booth-ytcard__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.booth-ytcard__title {
+  font-size: 14px;
+}
+
+.booth-ytlayout.is-watching .booth-ytcard__badge {
+  display: none;
 }
 
 .booth-music__body {
@@ -301,11 +387,11 @@
 }
 
 /* Now playing, transport and volume sit together under the video. */
-.booth-deck {
+.booth-deck,
+.booth-deck__controls {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 16px;
 }
 
 .booth-url {
@@ -696,6 +782,7 @@
 .booth-ytsearch {
   display: flex;
   min-width: 0;
+  margin-top: 16px;
 }
 
 .booth-ytsearch input {

@@ -63,7 +63,7 @@ export default function MusicPlayer({ started, onToast }) {
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState('')
-  const [playingResultId, setPlayingResultId] = useState(null)
+  const [playingResult, setPlayingResult] = useState(null)
   const [chip, setChip] = useState(null)
   const [volume, setVolume] = useState(() => readStored(VOLUME_KEY, 0.8))
   const [ytInfo, setYtInfo] = useState(EMPTY_YT)
@@ -159,7 +159,7 @@ export default function MusicPlayer({ started, onToast }) {
     setUrlError('')
     localRef.current?.pause()
     ytRef.current.load(parsed)
-    setPlayingResultId(item.id)
+    setPlayingResult(item)
   }
 
   const loadPlaylist = event => {
@@ -178,7 +178,7 @@ export default function MusicPlayer({ started, onToast }) {
     // Only one music source plays at a time.
     localRef.current?.pause()
     ytRef.current.load(parsed)
-    setPlayingResultId(null)
+    setPlayingResult(null)
   }
 
   const ytToggle = () => {
@@ -218,6 +218,8 @@ export default function MusicPlayer({ started, onToast }) {
 
   const ytPlaylist = ytInfo.kind === 'playlist'
   const trackNumber = ytInfo.index >= 0 ? ytInfo.index + 1 : 0
+  // Once a video plays, the panel switches from YouTube's home grid to its watch page layout.
+  const watching = tab === 'youtube' && ytInfo.loaded
 
   return (
     <section className="booth-panel booth-music" aria-labelledby="booth-music-title">
@@ -250,134 +252,149 @@ export default function MusicPlayer({ started, onToast }) {
         </button>
       </div>
 
+      {/* Laid out like YouTube: search on top, then the home grid, or the watch page once a video plays. */}
       {tab === 'youtube' && (
-        <div className="booth-search">
-          {/* Laid out like YouTube: a pill search bar, then a grid of video cards. */}
-          <form className="booth-ytsearch" role="search" onSubmit={runSearch}>
-            <input
-              type="search"
-              autoComplete="off"
-              spellCheck={false}
-              placeholder="Search YouTube"
-              aria-label="Search YouTube"
-              value={searchText}
-              onChange={event => setSearchText(event.target.value)}
-            />
-            <button type="submit" disabled={!searchText.trim() || searching || !started} aria-label="Search">
-              {searching ? <span className="booth-ytsearch__spin" aria-hidden="true" /> : <Icon name="search" />}
-            </button>
-          </form>
-          <div className="booth-ytchips" role="group" aria-label="Topics">
-            {CHIPS.map(item => (
-              <button
-                key={item.key}
-                type="button"
-                className={`booth-ytchip${chip === item.key ? ' is-on' : ''}`}
-                aria-pressed={chip === item.key}
-                onClick={() => pickChip(item)}
-                disabled={!started}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-          {searchError && <p className="booth-error" role="alert">{searchError}</p>}
-          {searching && !results.length && <p className="booth-hint">Loading videos...</p>}
-          {results.length > 0 && (
-            <ul className="booth-ytgrid" aria-label="YouTube results">
-              {results.map(item => {
-                const current = item.id === playingResultId && ytInfo.loaded
-                return (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      className={`booth-ytcard${current ? ' is-current' : ''}`}
-                      onClick={() => playResult(item)}
-                      disabled={!ytReady}
-                      aria-label={`Play ${item.title}`}
-                      aria-current={current || undefined}
-                    >
-                      <span className="booth-ytcard__thumb">
-                        {item.thumb && <img src={item.thumb} alt="" loading="lazy" />}
-                        <span className="booth-ytcard__overlay" aria-hidden="true">
-                          <Icon name={current && ytInfo.playing ? 'pause' : 'play'} size={30} />
-                        </span>
-                        {current && <span className="booth-ytcard__badge">Now playing</span>}
-                        {item.live ? (
-                          <span className="booth-ytcard__time is-live">LIVE</span>
-                        ) : (
-                          item.durationSec > 0 && <span className="booth-ytcard__time">{formatTime(item.durationSec)}</span>
-                        )}
-                      </span>
-                      <span className="booth-ytcard__title">{item.title}</span>
-                      <span className="booth-ytcard__channel">{item.channel}</span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </div>
+        <form className="booth-ytsearch" role="search" onSubmit={runSearch}>
+          <input
+            type="search"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="Search YouTube"
+            aria-label="Search YouTube"
+            value={searchText}
+            onChange={event => setSearchText(event.target.value)}
+          />
+          <button type="submit" disabled={!searchText.trim() || searching || !started} aria-label="Search">
+            {searching ? <span className="booth-ytsearch__spin" aria-hidden="true" /> : <Icon name="search" />}
+          </button>
+        </form>
       )}
 
-      {/* Always mounted: the YouTube player lives in here, even while the Local files tab is open.
-          YouTube will not play in a hidden or tiny player, so it shows once a link is loaded. */}
-      <div
-        ref={hostRef}
-        className={`booth-yt-host${ytInfo.loaded ? ' is-visible' : ''}`}
-        aria-hidden={!ytInfo.loaded}
-      />
+      {/* The wrapper is always rendered so the player node never remounts (that would stop the music). */}
+      <div className={`booth-ytlayout${watching ? ' is-watching' : ''}`}>
+        <div className="booth-ytlayout__main">
+          {/* Always mounted: the YouTube player lives in here, even while the Local files tab is open.
+              YouTube will not play in a hidden or tiny player, so it shows once a link is loaded. */}
+          <div
+            ref={hostRef}
+            className={`booth-yt-host${ytInfo.loaded ? ' is-visible' : ''}`}
+            aria-hidden={!ytInfo.loaded}
+          />
 
-      {/* Deck: what is playing and its controls, right under the video. */}
-      <div className="booth-deck">
-        <div className="booth-now-track" aria-live="polite">
-          <span className="booth-now-track__label">Now playing</span>
-          <span className="booth-now-track__title">
-            {tab === 'youtube'
-              ? ytInfo.title || (ytInfo.loaded ? 'Loading track...' : 'Nothing loaded')
-              : localInfo.title || 'Nothing playing'}
-          </span>
-          {tab === 'youtube' && ytPlaylist && ytInfo.count > 0 && (
-            <span className="booth-now-track__meta">Track {trackNumber} of {ytInfo.count}</span>
-          )}
-          {tab === 'local' && localInfo.count > 0 && (
-            <span className="booth-now-track__meta">Track {localInfo.index + 1} of {localInfo.count}</span>
-          )}
+          {/* Deck: what is playing and its controls, right under the video. */}
+          <div className="booth-deck">
+            <div className="booth-now-track" aria-live="polite">
+              <span className="booth-now-track__label">Now playing</span>
+              <span className="booth-now-track__title">
+                {tab === 'youtube'
+                  ? ytInfo.title || (ytInfo.loaded ? 'Loading track...' : 'Nothing loaded')
+                  : localInfo.title || 'Nothing playing'}
+              </span>
+              {watching && playingResult?.channel && (
+                <span className="booth-now-track__channel">{playingResult.channel}</span>
+              )}
+              {tab === 'youtube' && ytPlaylist && ytInfo.count > 0 && (
+                <span className="booth-now-track__meta">Track {trackNumber} of {ytInfo.count}</span>
+              )}
+              {tab === 'local' && localInfo.count > 0 && (
+                <span className="booth-now-track__meta">Track {localInfo.index + 1} of {localInfo.count}</span>
+              )}
+            </div>
+            <div className="booth-deck__controls">
+              {tab === 'youtube' ? (
+                <Transport
+                  playing={ytInfo.playing}
+                  shuffle={ytInfo.shuffle}
+                  canTrack={ytPlaylist}
+                  hasTrack={ytInfo.loaded}
+                  shuffleDisabled={!ytPlaylist}
+                  onPrevious={() => ytRef.current?.previous()}
+                  onToggle={ytToggle}
+                  onNext={() => ytRef.current?.next()}
+                  onShuffle={() => ytRef.current?.toggleShuffle()}
+                />
+              ) : (
+                <Transport
+                  playing={localInfo.playing}
+                  shuffle={localInfo.shuffle}
+                  canTrack={localInfo.count > 1}
+                  hasTrack={localInfo.count > 0}
+                  shuffleDisabled={localInfo.count < 2}
+                  onPrevious={() => localRef.current?.previous()}
+                  onToggle={localToggle}
+                  onNext={() => localRef.current?.next()}
+                  onShuffle={() => localRef.current?.toggleShuffle()}
+                />
+              )}
+              <Slider
+                id="music-volume"
+                label="Music volume"
+                value={Math.round(volume * 100)}
+                min={0}
+                max={100}
+                format={value => `${value}%`}
+                onChange={value => setVolume(value / 100)}
+              />
+            </div>
+          </div>
         </div>
-        {tab === 'youtube' ? (
-          <Transport
-            playing={ytInfo.playing}
-            shuffle={ytInfo.shuffle}
-            canTrack={ytPlaylist}
-            hasTrack={ytInfo.loaded}
-            shuffleDisabled={!ytPlaylist}
-            onPrevious={() => ytRef.current?.previous()}
-            onToggle={ytToggle}
-            onNext={() => ytRef.current?.next()}
-            onShuffle={() => ytRef.current?.toggleShuffle()}
-          />
-        ) : (
-          <Transport
-            playing={localInfo.playing}
-            shuffle={localInfo.shuffle}
-            canTrack={localInfo.count > 1}
-            hasTrack={localInfo.count > 0}
-            shuffleDisabled={localInfo.count < 2}
-            onPrevious={() => localRef.current?.previous()}
-            onToggle={localToggle}
-            onNext={() => localRef.current?.next()}
-            onShuffle={() => localRef.current?.toggleShuffle()}
-          />
+
+        {tab === 'youtube' && (
+          <div className="booth-ytlayout__side">
+            <div className="booth-ytchips" role="group" aria-label="Topics">
+              {CHIPS.map(item => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`booth-ytchip${chip === item.key ? ' is-on' : ''}`}
+                  aria-pressed={chip === item.key}
+                  onClick={() => pickChip(item)}
+                  disabled={!started}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            {searchError && <p className="booth-error" role="alert">{searchError}</p>}
+            {searching && !results.length && <p className="booth-hint">Loading videos...</p>}
+            {results.length > 0 && (
+              <ul className="booth-ytgrid" aria-label="YouTube results">
+                {results.map(item => {
+                  const current = item.id === playingResult?.id && ytInfo.loaded
+                  return (
+                    <li key={item.id}>
+                      <button
+                        type="button"
+                        className={`booth-ytcard${current ? ' is-current' : ''}`}
+                        onClick={() => playResult(item)}
+                        disabled={!ytReady}
+                        aria-label={`Play ${item.title}`}
+                        aria-current={current || undefined}
+                      >
+                        <span className="booth-ytcard__thumb">
+                          {item.thumb && <img src={item.thumb} alt="" loading="lazy" />}
+                          <span className="booth-ytcard__overlay" aria-hidden="true">
+                            <Icon name={current && ytInfo.playing ? 'pause' : 'play'} size={30} />
+                          </span>
+                          {current && <span className="booth-ytcard__badge">Now playing</span>}
+                          {item.live ? (
+                            <span className="booth-ytcard__time is-live">LIVE</span>
+                          ) : (
+                            item.durationSec > 0 && <span className="booth-ytcard__time">{formatTime(item.durationSec)}</span>
+                          )}
+                        </span>
+                        <span className="booth-ytcard__text">
+                          <span className="booth-ytcard__title">{item.title}</span>
+                          <span className="booth-ytcard__channel">{item.channel}</span>
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
         )}
-        <Slider
-          id="music-volume"
-          label="Music volume"
-          value={Math.round(volume * 100)}
-          min={0}
-          max={100}
-          format={value => `${value}%`}
-          onChange={value => setVolume(value / 100)}
-        />
       </div>
 
       {tab === 'youtube' ? (
