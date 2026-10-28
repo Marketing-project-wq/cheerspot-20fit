@@ -14,10 +14,11 @@ const PATHS = {
   volume: 'M4 9v6h4l5 4V5L8 9H4zM16 8.5a4.5 4.5 0 0 1 0 7M18.5 6a8 8 0 0 1 0 12',
   chevron: 'M6 9l6 6 6-6',
   search: 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM20 20l-4.8-4.8',
+  pin: 'M9 4h6l-1 6 3 3v2H7v-2l3-3-1-6zM12 15v6',
 }
 
 // Icons drawn as outlines rather than filled shapes.
-const STROKED = new Set(['shuffle', 'replay', 'volume', 'chevron', 'search'])
+const STROKED = new Set(['shuffle', 'replay', 'volume', 'chevron', 'search', 'pin'])
 
 export function Icon({ name, size = 22 }) {
   return (

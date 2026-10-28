@@ -2,7 +2,36 @@ import { useState } from 'react'
 import { Icon } from './boothParts.jsx'
 
 // Presentational only. The booth hook passes the items and handlers in.
-export default function CheerQueue({ items, queuedIds, activeId, onPlayNow, onReplay, onMoveUp, onMoveDown, onReorder, onDelete }) {
+// Pin toggle shared by queue and played rows.
+function PinButton({ item, pinned, onToggle }) {
+  return (
+    <button
+      type="button"
+      className={`booth-btn booth-btn--icon booth-pin${pinned ? ' is-on' : ''}`}
+      onClick={() => onToggle(item)}
+      aria-pressed={pinned}
+      aria-label={`${pinned ? 'Unpin' : 'Pin'} the cheer for ${item.athlete_name}`}
+      title={pinned ? 'Unpin' : 'Pin'}
+    >
+      <Icon name="pin" size={20} />
+    </button>
+  )
+}
+
+export default function CheerQueue({
+  items,
+  pinned,
+  queuedIds,
+  activeId,
+  onPlayNow,
+  onReplay,
+  onMoveUp,
+  onMoveDown,
+  onReorder,
+  onDelete,
+  onTogglePin,
+}) {
+  const pinnedIds = new Set(pinned.map(item => item.id))
   const [dragId, setDragId] = useState(null)
   const [overId, setOverId] = useState(null)
 
@@ -29,6 +58,38 @@ export default function CheerQueue({ items, queuedIds, activeId, onPlayNow, onRe
 
   return (
     <section className="booth-panel booth-queue-panel" aria-labelledby="booth-queue-title">
+      {pinned.length > 0 && (
+        <section className="booth-pinned" aria-labelledby="booth-pinned-title">
+          <header className="booth-panel__head">
+            <h2 id="booth-pinned-title">Pinned</h2>
+            <span className="booth-count">{pinned.length}</span>
+          </header>
+          <ol className="booth-pinned__list">
+            {pinned.map(item => {
+              const busy = item.id === activeId || queuedIds.includes(item.id)
+              return (
+                <li key={item.id} className={`booth-pinned__row${item.id === activeId ? ' is-playing' : ''}`}>
+                  <div className="booth-queue__info">
+                    <p className="booth-queue__name">
+                      <strong>{item.athlete_name}</strong>
+                      <span className="booth-queue__meta">From {item.sender_name}</span>
+                    </p>
+                    {item.transcript && <p className="booth-queue__text booth-history__text">{item.transcript}</p>}
+                  </div>
+                  <div className="booth-history__actions">
+                    <button type="button" className="booth-btn booth-btn--primary" onClick={() => onReplay(item)} disabled={busy}>
+                      <Icon name="play" size={18} />
+                      {item.id === activeId ? 'Playing' : 'Play'}
+                    </button>
+                    <PinButton item={item} pinned onToggle={onTogglePin} />
+                  </div>
+                </li>
+              )
+            })}
+          </ol>
+        </section>
+      )}
+
       <header className="booth-panel__head">
         <h2 id="booth-queue-title">Queue</h2>
         <span className="booth-count">{approved.length} waiting</span>
@@ -116,6 +177,7 @@ export default function CheerQueue({ items, queuedIds, activeId, onPlayNow, onRe
                   >
                     Play now
                   </button>
+                  <PinButton item={item} pinned={pinnedIds.has(item.id)} onToggle={onTogglePin} />
                   <button
                     type="button"
                     className="booth-btn booth-btn--icon booth-del"
@@ -152,6 +214,7 @@ export default function CheerQueue({ items, queuedIds, activeId, onPlayNow, onRe
                   <button type="button" className="booth-btn" onClick={() => onReplay(item)} disabled={item.id === activeId}>
                     Replay
                   </button>
+                  <PinButton item={item} pinned={pinnedIds.has(item.id)} onToggle={onTogglePin} />
                   <button
                     type="button"
                     className="booth-btn booth-btn--icon booth-del"

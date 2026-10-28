@@ -809,6 +809,50 @@
   flex: 1;
 }
 
+.booth-pinned {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.booth-pinned__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.booth-pinned__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 12px;
+  background: var(--panel-2);
+}
+
+.booth-pinned__row.is-playing {
+  border-color: var(--accent);
+}
+
+.booth-pinned__row .booth-queue__info {
+  flex: 1;
+}
+
+.booth-pin {
+  color: var(--muted);
+}
+
+.booth-pin.is-on {
+  border-color: var(--accent);
+  background: rgba(220, 38, 38, 0.15);
+  color: var(--accent-text);
+}
+
 .booth-history__actions {
   display: flex;
   flex: none;

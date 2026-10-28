@@ -23,12 +23,24 @@ import {
   subscribeBooth,
 } from '../../lib/ducking.js'
 import { loadYouTubeApi } from '../../lib/youtubePlayer.js'
+import { getAudioUrl } from '../../lib/cheers.js'
 import { formatTime } from './boothParts.jsx'
 import { readStored, writeStored } from './boothStorage.js'
 import { AUTO_GAP_KEY, DEFAULT_AUTO_GAP, readSetting } from '../../lib/settings.js'
 
 const MUSIC_VOLUME_KEY = 'cheerspot.booth.musicVolume'
 const CHEER_VOLUME_KEY = 'cheerspot.booth.cheerVolume'
+const PINS_KEY = 'cheerspot.booth.pins'
+
+// What a pin keeps, so a pinned cheer can still be played after it drops out of the played list.
+const pinSnapshot = item => ({
+  id: item.id,
+  athlete_name: item.athlete_name,
+  sender_name: item.sender_name,
+  transcript: item.transcript ?? null,
+  audio_path: item.audio_path,
+  duration_sec: item.duration_sec,
+})
 
 // The gap between AUTO cheers is set by the superadmin (cheerspot_settings) and read every few
 // seconds, so a change reaches an open booth without a refresh. Fade timings are in ducking.js.
@@ -268,11 +280,28 @@ export default function useCheerBooth() {
     if (focusItem) playItem(focusItem)
   }
 
-  // Deleting asks first: the voice note is removed for good, also for the superadmin.
+  // Pinned cheers: the DJ's picks, one tap away, to warm up the crowd. Kept on this booth laptop.
+  const [pins, setPins] = useState(() => {
+    const saved = readStored(PINS_KEY, [])
+    return Array.isArray(saved) ? saved.filter(p => p && p.id && p.audio_path) : []
+  })
+  useEffect(() => {
+    writeStored(PINS_KEY, pins)
+  }, [pins])
+  const togglePin = item =>
+    setPins(list => (list.some(p => p.id === item.id) ? list.filter(p => p.id !== item.id) : [...list, pinSnapshot(item)]))
+  // A pinned cheer plays from the live list when it is there, else from its saved copy.
+  const pinned = pins.map(
+    p => items.find(item => item.id === p.id) || { ...p, status: 'played', getAudioUrl: () => getAudioUrl(p.audio_path) },
+  )
+
+  // Deleting asks first: the voice note is removed for good, also for the superadmin. Its pin goes too.
   const deleteItem = item => {
     if (!window.confirm(`Delete the cheer for ${item.athlete_name} from ${item.sender_name}? The voice note is removed for good.`)) return
+    setPins(list => list.filter(p => p.id !== item.id))
     removeCheer(item.id).catch(() => showToast(`Could not delete the cheer for ${item.athlete_name}. Try again.`))
   }
+
 
   const replayFocus = () => {
     if (!focusItem) return
@@ -303,6 +332,8 @@ export default function useCheerBooth() {
     replayFocus,
     skip: skipCheer,
     deleteItem,
+    pinned,
+    togglePin,
     moveUp,
     moveDown,
     reorder: setOrder,
