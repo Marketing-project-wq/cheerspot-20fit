@@ -84,7 +84,7 @@ export default function MusicPlayer({ started, onToast }) {
     writeStored(VOLUME_KEY, volume)
   }, [volume])
 
-  // Players are created once the session starts (the user gesture). Only one source plays at a time.
+  // Players are created once the booth sound is on. Only one source plays at a time.
   useEffect(() => {
     if (!started || !hostRef.current || !window.YT?.Player) return
     const source = createYouTubeSource(hostRef.current, {
@@ -387,7 +387,11 @@ export default function MusicPlayer({ started, onToast }) {
           </button>
         </form>
         {urlError && <p className="booth-error" role="alert">{urlError}</p>}
-        {!ytReady && <p className="booth-hint">Start the session to load YouTube.</p>}
+        {!ytReady && (
+          <p className="booth-hint">
+            {started ? 'YouTube could not load. Check the connection and refresh the page.' : 'YouTube loads once the booth sound is on.'}
+          </p>
+        )}
         {ytReady && !ytInfo.loaded && <p className="booth-hint">Pick a video above, or paste a link and press Load.</p>}
       </div>
     </section>

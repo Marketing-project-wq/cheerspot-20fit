@@ -116,22 +116,49 @@ export default function useCheerBooth() {
     return () => clearInterval(timer)
   }, [started, playItem])
 
+  // The booth starts by itself. Signing in on /dj is a click, so the browser allows sound right away.
+  // A remembered session opens without one: then sound waits for the first click or key press anywhere.
+  const startingRef = useRef(false)
+  const [needsTap, setNeedsTap] = useState(false)
+
   const startSession = useCallback(async () => {
-    // startAudio resumes the AudioContext before its first await, so this stays inside the click.
+    if (startingRef.current) return
+    startingRef.current = true
+    let ok = false
     try {
-      await startAudio()
+      ok = await startAudio()
     } catch {
-      showToast('Audio could not start. Check the browser sound settings.')
+      ok = false
+    }
+    if (!ok) {
+      startingRef.current = false
+      setNeedsTap(true)
       return
     }
+    setNeedsTap(false)
     try {
       await loadYouTubeApi()
     } catch {
-      showToast('YouTube did not load. Local files still work.')
+      showToast('YouTube did not load. Live input still works.')
     }
     setNextAt(0)
     setStarted(true)
   }, [showToast])
+
+  useEffect(() => {
+    startSession()
+  }, [startSession])
+
+  useEffect(() => {
+    if (!needsTap) return undefined
+    const onGesture = () => startSession()
+    window.addEventListener('pointerdown', onGesture, true)
+    window.addEventListener('keydown', onGesture, true)
+    return () => {
+      window.removeEventListener('pointerdown', onGesture, true)
+      window.removeEventListener('keydown', onGesture, true)
+    }
+  }, [needsTap, startSession])
 
   const approved = items.filter(item => item.status === 'approved')
   const focusItem =
@@ -183,7 +210,7 @@ export default function useCheerBooth() {
 
   return {
     started,
-    startSession,
+    needsTap,
     mode,
     setMode,
     master,

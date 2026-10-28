@@ -39,7 +39,7 @@ const subscribers = new Set()
 const state = { phase: 'idle', ducked: false }
 let current = snapshot()
 
-// The shared context. Created on the first user gesture (Start session), never before.
+// The shared context, created when the booth starts. It only plays once the browser allows sound.
 export function getAudioContext() {
   if (!ctx) {
     const Ctor = window.AudioContext || window.webkitAudioContext
@@ -58,11 +58,15 @@ export function getAudioContext() {
   return ctx
 }
 
-// Must run inside the Start session click. Starts the status tick.
+// Resumes the shared context and starts the status tick. Returns false when the browser still blocks
+// sound: without a click or key press on the site, resume() never settles, so it is given 400 ms.
+// resume() runs before the first await, so a call from a click handler counts as that click.
 export async function startAudio() {
   const context = getAudioContext()
-  if (context.state !== 'running') await context.resume()
+  if (context.state !== 'running') await Promise.race([context.resume().catch(() => {}), delay(400)])
+  if (context.state !== 'running') return false
   if (!tickTimer) tickTimer = setInterval(emit, TICK_MS)
+  return true
 }
 
 // Stops playback and the tick. Called when the booth unmounts.

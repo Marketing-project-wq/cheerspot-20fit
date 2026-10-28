@@ -68,7 +68,13 @@ export default function CheerBooth({ onLogout }) {
         </button>
       </header>
 
-      <div className="booth-body" inert={!started}>
+      {booth.needsTap && (
+        <p className="booth-tapnote" role="status">
+          Klik di mana saja untuk menyalakan suara booth.
+        </p>
+      )}
+
+      <div className="booth-body">
         <main className="booth-grid">
           <MusicPlayer started={started} onToast={booth.showToast} />
 
@@ -101,20 +107,6 @@ export default function CheerBooth({ onLogout }) {
         </div>
       )}
 
-      {!started && (
-        <div className="booth-start" role="dialog" aria-modal="true" aria-labelledby="booth-start-title">
-          <div className="booth-start__card">
-            <h2 id="booth-start-title">CheerSpot Booth</h2>
-            <p>
-              Browsers block sound until you press once. Start the session to open the booth. After that it runs
-              without touching the screen.
-            </p>
-            <button type="button" className="booth-btn booth-btn--primary booth-btn--xl booth-start__button" onClick={booth.startSession}>
-              Start session
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
