@@ -8,6 +8,18 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 // each other. Chosen once per page load, from the URL the page opened on.
 export const AUTH_AREA = typeof window !== 'undefined' && window.location.pathname.startsWith('/dj') ? 'dj' : 'admin'
 const STORAGE_KEY = `cheerspot-auth-${AUTH_AREA}`
+
+// Forgets this area's session in this browser without telling the server, so the session itself
+// stays valid (used to hand a DJ session from /admin over to /dj).
+export function forgetLocalSession() {
+  for (const store of [localStorage, sessionStorage]) {
+    try {
+      store.removeItem(STORAGE_KEY)
+    } catch {
+      // Storage blocked: nothing was kept there.
+    }
+  }
+}
 const REMEMBER_KEY = `cz-remember-${AUTH_AREA}`
 
 // "Remember me" for staff sign-in. On: the session lives in localStorage and survives a restart.

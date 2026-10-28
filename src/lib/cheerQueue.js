@@ -5,24 +5,29 @@ import { getAudioUrl } from './cheers.js'
 import { supabase } from './supabase.js'
 
 const POLL_MS = 3000
-const HISTORY_LIMIT = 20
+const HISTORY_LIMIT = 50
 const COLUMNS = 'id, created_at, sender_name, athlete_name, duration_sec, audio_path, status, transcript'
 
 let items = []
 let order = []
-// Cheers marked played here. A poll that lands before the update saves must not bring them back.
-const playedLocally = new Map()
+// Cheers marked played here whose save the server has not shown yet. Until a poll returns them as
+// something other than approved, they stay played on screen, so AUTO never plays them twice. A
+// failed save or a later "Play again" from the superadmin is then followed as the server says.
+const playedPending = new Set()
+// When each cheer was played in this booth session. Only orders the played list; never forces a status.
+const playedAt = new Map()
 const listeners = new Set()
 const errorListeners = new Set()
 let timer = null
 let loading = null
 
 function toItem(row) {
-  const playedAt = playedLocally.get(row.id)
+  if (playedPending.has(row.id) && row.status !== 'approved') playedPending.delete(row.id)
+  const status = playedPending.has(row.id) ? 'played' : row.status
   return {
     ...row,
-    status: playedAt ? 'played' : row.status,
-    playedAt: playedAt || (row.status === 'played' ? Date.parse(row.created_at) : null),
+    status,
+    playedAt: status === 'played' ? playedAt.get(row.id) || Date.parse(row.created_at) : null,
     getAudioUrl: () => getAudioUrl(row.audio_path),
   }
 }
@@ -45,7 +50,8 @@ function applyOrder(next) {
   })
   const byId = new Map(next.map(item => [item.id, item]))
   const approved = order.map(id => byId.get(id))
-  const played = next.filter(item => item.status === 'played')
+  // Played list: most recently played first (this session), then the rest by when they were sent.
+  const played = next.filter(item => item.status === 'played').sort((a, b) => b.playedAt - a.playedAt)
   return [...approved, ...played]
 }
 
@@ -115,13 +121,18 @@ export function subscribe(callback, onError) {
 // Marks the cheer played right away, then saves it. Rejects if the save fails.
 export async function markPlayed(id) {
   if (!items.some(item => item.id === id)) return
-  const playedAt = Date.now()
-  playedLocally.set(id, playedAt)
-  items = applyOrder(items.map(item => (item.id === id ? { ...item, status: 'played', playedAt } : item)))
+  const now = Date.now()
+  playedPending.add(id)
+  playedAt.set(id, now)
+  items = applyOrder(items.map(item => (item.id === id ? { ...item, status: 'played', playedAt: now } : item)))
   emit()
   // DJ accounts cannot update rows directly; this function only moves approved to played.
   const { error } = await supabase.rpc('cheerspot_mark_played', { p_id: id })
-  if (error) throw error
+  if (error) {
+    // Not saved: follow the server again, which still has it approved.
+    playedPending.delete(id)
+    throw error
+  }
 }
 
 // Replaces the order of approved items.

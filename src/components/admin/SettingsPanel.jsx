@@ -1,4 +1,3 @@
-import { MAX_DURS } from './data.js'
 import { pick, STRINGS, TOGGLES } from './strings.js'
 
 const WORD_GROUPS = [
@@ -87,29 +86,6 @@ export default function SettingsPanel({ m, lang }) {
             </button>
           )
         })}
-
-        <div className="adm-card-plain adm-card-plain--row">
-          <div className="adm-settings__text">
-            <span className="adm-settings__title">{S.maxDur}</span>
-            <span className="adm-settings__sub">{S.maxDurSub}</span>
-          </div>
-          <div className="adm-seg-plain">
-            {MAX_DURS.map(d => {
-              const on = m.maxDur === d
-              return (
-                <button
-                  key={d}
-                  type="button"
-                  aria-pressed={on}
-                  className={`adm-seg-plain__btn${on ? ' is-on' : ''}`}
-                  onClick={() => m.setMaxDur(d)}
-                >
-                  {d + S.durUnit}
-                </button>
-              )
-            })}
-          </div>
-        </div>
 
         <div className="adm-card-plain">
           <div className="adm-settings__text">

@@ -1,4 +1,4 @@
-import { setRememberSession, supabase } from './supabase.js'
+import { forgetLocalSession, setRememberSession, supabase } from './supabase.js'
 
 // Staff roles are set in app_metadata from the Supabase dashboard. Users cannot change them.
 const STAFF_ROLES = ['superadmin', 'admin']
@@ -29,7 +29,8 @@ export async function signIn(login, password, { remember = true } = {}) {
 const HANDOFF_KEY = 'cz-dj-handoff'
 
 // A DJ who signs in on /admin belongs in the booth. The session moves to the /dj area: its tokens
-// are passed through this tab's sessionStorage, and the /admin copy is cleared from this browser only.
+// are passed through this tab's sessionStorage, and the /admin copy is only forgotten locally. signOut
+// is not used here: even its local scope ends the session on the server, which would kill the handoff.
 export async function handOffToDj() {
   const session = await getSession()
   if (session) {
@@ -42,7 +43,7 @@ export async function handOffToDj() {
       // Storage blocked: the DJ signs in again on /dj.
     }
   }
-  await supabase?.auth.signOut({ scope: 'local' })
+  forgetLocalSession()
 }
 
 // On /dj: picks up a session handed over from /admin. Returns true when one was taken.
@@ -60,9 +61,11 @@ export async function takeHandoff() {
   return !error
 }
 
+// Ends only this browser's session for this area. The default (global) would also sign the account
+// out of /admin or /dj in another tab and on every other device.
 export async function signOut() {
   if (!supabase) return
-  await supabase.auth.signOut()
+  await supabase.auth.signOut({ scope: 'local' })
 }
 
 export async function getSession() {

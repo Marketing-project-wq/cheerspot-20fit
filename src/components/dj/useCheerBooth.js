@@ -87,7 +87,11 @@ export default function useCheerBooth() {
     item => {
       playCheer(item, {
         onStart: () => {
-          markPlayed(item.id).catch(() => showToast(`${item.athlete_name} played, but the status was not saved.`))
+          // If the save fails the cheer shows as approved again; AUTO must not play it a second time.
+          markPlayed(item.id).catch(() => {
+            failedIds.current.add(item.id)
+            showToast(`${item.athlete_name} played, but the status was not saved.`)
+          })
           setLastPlayedId(item.id)
         },
         onEnd: () => setNextAt(Date.now() + GAP_SEC * 1000),

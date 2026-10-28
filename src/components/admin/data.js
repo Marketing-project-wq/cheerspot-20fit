@@ -1,7 +1,6 @@
 // Mock data and pure helpers from the superadmin design. Nothing here talks to a backend.
 import { pick, REASONS, STRINGS } from './strings.js'
 
-export const MAX_DURS = [15, 30, 45]
 export const DEFAULT_SETTINGS = { autoFlag: true, needTx: true, open: true, autoApprove: false }
 export const DEFAULT_EVENT = 'HYROX Sportfest Vol.3'
 

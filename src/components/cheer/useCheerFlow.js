@@ -212,6 +212,8 @@ export default function useCheerFlow({ lang = 'id' } = {}) {
     if (sRef.current === 'recording' || busyRef.current) return
     unwatch()
     dropAudio()
+    // A new take must never send the previous recording.
+    blobRef.current = null
     setUrl(null)
     setLevels(null)
     setHeard(false)
@@ -359,23 +361,39 @@ export default function useCheerFlow({ lang = 'id' } = {}) {
     begin()
   }
 
+  // Resolves with the current take's audio, or null if it is not ready within 4 seconds.
+  const waitForBlob = () =>
+    new Promise(resolve => {
+      const until = Date.now() + 4000
+      const check = () => {
+        if (blobRef.current || Date.now() > until) resolve(blobRef.current)
+        else setTimeout(check, 50)
+      }
+      check()
+    })
+
   const send = () => {
     if (!athlete.trim()) {
       setErr(en ? 'Fill in the athlete name first.' : 'Isi nama atlet dulu, biar DJ tahu cheer ini buat siapa.')
       return
     }
-    if (!blobRef.current) return
     if (audioRef.current) audioRef.current.pause()
     setProg(0)
     setUploadState('pending')
     go('uploading')
-    submitCheer({ blob: blobRef.current, senderName: name, athleteName: athlete, durationSec: dur })
+    // Some browsers (Safari) finish the recording a moment after Stop. Wait for this take's audio.
+    waitForBlob()
+      .then(blob => {
+        if (!blob) throw new Error('Recording not ready')
+        return submitCheer({ blob, senderName: name, athleteName: athlete, durationSec: dur })
+      })
       .then(() => setUploadState('done'))
       .catch(() => setUploadState('error'))
   }
 
   const again = () => {
     dropAudio()
+    blobRef.current = null
     setAthlete('')
     setUrl(null)
     go('idle')

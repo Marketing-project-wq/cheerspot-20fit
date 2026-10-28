@@ -18,21 +18,28 @@ import { deleteCheer } from '../../lib/staff.js'
 // New cheers and status changes from the booth show up within a few seconds, without a refresh.
 const POLL_MS = 3000
 const NEW_MARK_MS = 9000
+// Transcription runs right after a cheer is sent. Without a transcript after this long it most
+// likely failed; the cheer can then be judged by listening.
+const TRANSCRIBE_WAIT_MS = 2 * 60 * 1000
 
 // Turns a cheerspot_cheers row into the shape the moderation UI uses.
-const fromRow = row => ({
-  id: row.id,
-  ts: Date.parse(row.created_at),
-  sender: row.sender_name,
-  athlete: row.athlete_name,
-  dur: row.duration_sec,
-  text: row.transcript || '',
-  audioPath: row.audio_path,
-  status: row.status,
-  transcribing: false,
-  isNew: false,
-  bib: '',
-})
+const fromRow = row => {
+  const ts = Date.parse(row.created_at)
+  return {
+    id: row.id,
+    ts,
+    sender: row.sender_name,
+    athlete: row.athlete_name,
+    dur: row.duration_sec,
+    text: row.transcript || '',
+    audioPath: row.audio_path,
+    status: row.status,
+    reason: row.reason ?? null,
+    transcribing: !row.transcript && row.status === 'pending' && Date.now() - ts < TRANSCRIBE_WAIT_MS,
+    isNew: false,
+    bib: '',
+  }
+}
 
 const PAGES = ['mod', 'queue', 'hist', 'qr', 'dj', 'set']
 
@@ -60,7 +67,6 @@ export default function useModeration({ lang, liveFeed }) {
     keepValue('cz-admin-events', events)
     keepValue('cz-admin-event', eventName)
   }, [events, eventName])
-  const [maxDur, setMaxDur] = useState(30)
   // Moderation words by level ({ high, medium, low }): the default list plus this admin's changes,
   // kept in this browser (localStorage) so they survive closing the tab.
   const [wordChanges, setWordChanges] = useState(() => {
@@ -89,18 +95,26 @@ export default function useModeration({ lang, liveFeed }) {
     saveValue('cz-admin-page', page)
   }, [page])
 
-  // Cheers being deleted. Polls leave them out until the delete settles.
+  // Cheers deleted here (or being deleted). Polls leave them out.
   const deleting = useRef(new Set())
   // Status writes still in flight. Until one settles, a poll keeps the local status, not the server's.
   const saving = useRef(new Map())
+  // When each cheer's status was last changed here. A poll sent before that time carries an older
+  // copy, so it must not overwrite the change, even if the save has finished by the time it lands.
+  const changedAt = useRef(new Map())
   const saveStatus = (id, status, reason = null) => {
     saving.current.set(id, (saving.current.get(id) || 0) + 1)
+    changedAt.current.set(id, Date.now())
     return updateCheerStatus(id, status, reason).finally(() => {
       const left = saving.current.get(id) - 1
       if (left > 0) saving.current.set(id, left)
       else saving.current.delete(id)
+      changedAt.current.set(id, Date.now())
     })
   }
+  // Auto-send judges each cheer once, when its transcript first arrives. A cheer the admin moves
+  // back to pending is not sent again.
+  const autoChecked = useRef(new Set())
 
   // Pull all cheers from Supabase every few seconds and when the tab comes back into view.
   // The server copy wins, except for cheers with a status write in flight. Cheers that were not
@@ -109,8 +123,10 @@ export default function useModeration({ lang, liveFeed }) {
   useEffect(() => {
     let alive = true
     const load = async () => {
+      const sentAt = Date.now()
       const rows = await fetchRecentCheers()
       if (!alive || !rows) return
+      const stale = id => saving.current.has(id) || (changedAt.current.get(id) || 0) >= sentAt
       const known = new Set(live.current.items.map(x => x.id))
       const arrived = loadedOnce.current ? rows.filter(row => !known.has(row.id)).map(row => row.id) : []
       loadedOnce.current = true
@@ -121,17 +137,16 @@ export default function useModeration({ lang, liveFeed }) {
           const kept = local.get(item.id)
           if (!kept) return arrived.includes(item.id) ? { ...item, isNew: true } : item
           const merged = { ...item, isNew: kept.isNew, playedAt: kept.playedAt, autoApproved: kept.autoApproved }
-          return saving.current.has(item.id) ? { ...merged, status: kept.status, reason: kept.reason } : merged
+          return stale(item.id) ? { ...merged, status: kept.status, reason: kept.reason } : merged
         })
       })
       arrived.forEach(id => later(() => patch(id, { isNew: false }), NEW_MARK_MS))
       const { settings: st, words: w } = live.current
-      if (st.autoApprove) {
-        rows
-          .filter(row => row.status === 'pending' && row.transcript && !saving.current.has(row.id))
-          .filter(row => !needsReview(scanWords(row.transcript, w)))
-          .forEach(row => autoApprove(row.id))
-      }
+      const fresh = rows.filter(
+        row => row.status === 'pending' && row.transcript && !stale(row.id) && !autoChecked.current.has(row.id),
+      )
+      fresh.forEach(row => autoChecked.current.add(row.id))
+      if (st.autoApprove) fresh.filter(row => !needsReview(scanWords(row.transcript, w))).forEach(row => autoApprove(row.id))
     }
     load()
     const t = setInterval(load, POLL_MS)
@@ -200,7 +215,10 @@ export default function useModeration({ lang, liveFeed }) {
     const w = live.current.words
     live.current.items
       .filter(x => x.status === 'pending' && !x.transcribing && x.text && !needsReview(scanWords(x.text, w)))
-      .forEach(x => autoApprove(x.id))
+      .forEach(x => {
+        autoChecked.current.add(x.id)
+        autoApprove(x.id)
+      })
   }
 
   // TODO(supabase): replace the mock feed with a realtime subscription to incoming cheers.
@@ -393,19 +411,19 @@ export default function useModeration({ lang, liveFeed }) {
   const requeue = id => move(id, 'approved')
   const restore = id => move(id, 'pending')
 
-  // Deletes a cheer and its voice note for good. It leaves the screen right away; polls skip it
-  // while the delete runs, and it comes back if the delete fails.
+  // Deletes a cheer and its voice note for good. It leaves the screen right away and comes back
+  // with the next poll only if the delete fails.
   const removeCheer = id => {
     const L = live.current
     if (L.playId === id) stopPlay()
     deleting.current.add(id)
     setItems(prev => prev.filter(x => x.id !== id))
     if (L.focus === id) setFocus(null)
-    deleteCheer(id)
-      .catch(() => {
-        setToast({ id, prev: null, msg: pick(['Gagal menghapus. Coba lagi.', 'Could not delete. Try again.'], L.lang), color: '#BF0000' })
-      })
-      .finally(() => deleting.current.delete(id))
+    // On success the id stays in deleting: a poll sent before the delete must not bring it back.
+    deleteCheer(id).catch(() => {
+      deleting.current.delete(id)
+      setToast({ id, prev: null, msg: pick(['Gagal menghapus. Coba lagi.', 'Could not delete. Try again.'], L.lang), color: '#BF0000' })
+    })
   }
 
   // Keyboard shortcuts, active on the moderation page only.
@@ -459,8 +477,6 @@ export default function useModeration({ lang, liveFeed }) {
     addEvent,
     toggleEvent,
     removeEvent,
-    maxDur,
-    setMaxDur,
     words,
     wordIn,
     setWordIn,

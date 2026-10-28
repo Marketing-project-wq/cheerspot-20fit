@@ -77,8 +77,6 @@ const COPY = {
   evRemove: ['Hapus event', 'Remove event'],
   evEmpty: ['Belum ada event. Tambahkan di bawah.', 'No events yet. Add one below.'],
   evNone: ['Belum ada event aktif. Aktifkan event di Pengaturan.', 'No active event. Turn one on in Settings.'],
-  maxDur: ['Durasi maksimal rekaman', 'Max recording length'],
-  maxDurSub: ['Batas waktu di halaman Cheer.', 'Time limit on the Cheer page.'],
   words: ['Daftar kata kasar', 'Offensive word list'],
   wordsSub: [
     'Kata ini disorot di transkrip. Cocok per kata utuh, huruf diulang dan angka pengganti huruf tetap terbaca (anjiiing, g0bl0k).',
@@ -159,16 +157,11 @@ export const TOGGLES = [
     desc: ['Tombol Yes nonaktif selama audio masih ditranskrip.', 'Yes is disabled while audio is still being transcribed.'],
   },
   {
-    key: 'open',
-    label: ['Terima cheer baru', 'Accept new cheers'],
-    desc: ['Matikan untuk menutup sementara halaman Cheer.', 'Turn off to temporarily close the Cheer page.'],
-  },
-  {
     key: 'autoApprove',
     label: ['Kirim otomatis ke DJ', 'Auto-send to DJ'],
     desc: [
-      'Cheer langsung masuk antrean DJ tanpa Yes, selama transkrip tidak berisi kata kasar berat atau sedang. Kata ringan tidak menahan cheer. Cheer yang ditandai tetap menunggu review.',
-      'Cheers go straight to the DJ queue without Yes, as long as the transcript has no severe or harsh words. Mild words do not hold a cheer. Flagged cheers still wait for review.',
+      'Cheer langsung masuk antrean DJ tanpa Yes, selama transkrip tidak berisi kata kasar berat atau sedang. Kata ringan tidak menahan cheer. Cheer yang ditandai tetap menunggu review. Hanya berjalan selama dashboard ini terbuka.',
+      'Cheers go straight to the DJ queue without Yes, as long as the transcript has no severe or harsh words. Mild words do not hold a cheer. Flagged cheers still wait for review. Only works while this dashboard is open.',
     ],
   },
 ]
