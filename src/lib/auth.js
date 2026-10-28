@@ -1,4 +1,4 @@
-import { supabase } from './supabase.js'
+import { setRememberSession, supabase } from './supabase.js'
 
 // Staff roles are set in app_metadata from the Supabase dashboard. Users cannot change them.
 const STAFF_ROLES = ['superadmin', 'admin']
@@ -18,8 +18,9 @@ export function loginEmail(login) {
   return value.includes('@') ? value : `${value}@${DJ_EMAIL_DOMAIN}`
 }
 
-export async function signIn(login, password) {
+export async function signIn(login, password, { remember = true } = {}) {
   if (!supabase) throw new Error('Supabase is not configured')
+  setRememberSession(remember)
   const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail(login), password })
   if (error) throw error
   return data.session

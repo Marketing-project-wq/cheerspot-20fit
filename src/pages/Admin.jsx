@@ -16,9 +16,14 @@ export default function Admin() {
 
   useEffect(() => {
     let alive = true
-    getSession().then(session => {
-      if (alive) setRole(staffRole(session))
-    })
+    // A broken saved session counts as signed out, so the page never stays blank.
+    getSession()
+      .then(session => {
+        if (alive) setRole(staffRole(session))
+      })
+      .catch(() => {
+        if (alive) setRole(null)
+      })
     const unsubscribe = onSessionChange(session => setRole(staffRole(session)))
     return () => {
       alive = false

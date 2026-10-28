@@ -8,13 +8,14 @@ import { LangSwitch, Logo } from './shared.jsx'
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // copy overrides the heading strings ({ title, sub } per language), used by the DJ Booth login.
-export default function AdminLogin({ onSuccess, copy }) {
+// rememberDefault sets the "Remember me" box. notice ({ text, action, onAction }) shows a note above the form.
+export default function AdminLogin({ onSuccess, copy, rememberDefault = true, notice }) {
   const { lang, setLang } = useT()
   const S = { ...(STRINGS[lang] || STRINGS.id), ...(copy?.[lang] || copy?.id) }
   const [email, setEmail] = useState('')
   const [pass, setPass] = useState('')
   const [showPass, setShowPass] = useState(false)
-  const [remember, setRemember] = useState(true)
+  const [remember, setRemember] = useState(rememberDefault)
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState(null)
   const [info, setInfo] = useState(null)
@@ -34,7 +35,7 @@ export default function AdminLogin({ onSuccess, copy }) {
     setErr(null)
     setInfo(null)
     try {
-      const session = await signIn(email.trim(), pass)
+      const session = await signIn(email.trim(), pass, { remember })
       const role = staffRole(session)
       // Accounts without a staff role can sign in to Supabase but must not see moderation.
       if (!role) {
@@ -70,6 +71,15 @@ export default function AdminLogin({ onSuccess, copy }) {
               <h1 className="adm-login__title">{S.title}</h1>
               <p className="adm-login__sub">{S.sub}</p>
             </div>
+
+            {notice && (
+              <div className="adm-info adm-notice">
+                <span>{notice.text}</span>
+                <button type="button" className="adm-link" onClick={notice.onAction}>
+                  {notice.action}
+                </button>
+              </div>
+            )}
 
             <div className="adm-field">
               <label className="adm-field__label" htmlFor="adm-email">
