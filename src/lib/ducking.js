@@ -1,9 +1,9 @@
-// Audio engine for the booth: one shared AudioContext, the cheer chain, and the ducking state
-// machine. The music source (YouTube) registers an adapter with
+// Audio engine for the booth: one shared AudioContext, the cheer chain, the DJ live input, and the
+// ducking state machine. Music sources (YouTube, live input) register an adapter with
 // { isPlaying(), getLevel(), setLevel(v), rampTo(v, ms) }. Levels are 0..1.
 
 export const DEFAULT_DUCKING = {
-  duckLevel: 0.2,
+  duckLevel: 0.3,
   fadeDownMs: 1000,
   fadeUpMs: 2500,
   delayBeforeUpMs: 1200,
@@ -15,6 +15,10 @@ const CHEER_OVERLAP = 0.6
 // Short fades on the cheer itself, so start, pause and skip never click.
 const CHEER_FADE_IN_S = 0.06
 const CHEER_FADE_OUT_S = 0.12
+// Ducked music never drops below this (6% on YouTube's 0-100 scale), so it never goes silent
+// under a cheer, even with low music or master volume. Only a volume of 0 means silence.
+const DUCK_FLOOR = 0.06
+const CURVE_POINTS = 64
 
 let ctx = null
 let cheerInput = null
@@ -84,7 +88,7 @@ export function setMusicVolume(value) {
   applyLevels()
 }
 
-// Register a music adapter under a name ('youtube'). Pass null to remove it.
+// Register a music adapter under a name ('youtube' or 'live'). Pass null to remove it.
 export function registerMusicSource(name, adapter) {
   sources[name] = adapter || null
   applyLevels()
@@ -134,6 +138,91 @@ export function getBoothStatus() {
   return current
 }
 
+// Lists audio inputs (USB audio interface, line in). Labels only appear after mic permission.
+export async function listAudioInputs() {
+  if (!navigator.mediaDevices?.enumerateDevices) return []
+  const devices = await navigator.mediaDevices.enumerateDevices()
+  return devices
+    .filter(device => device.kind === 'audioinput')
+    .map((device, i) => ({ id: device.deviceId, label: device.label || `Audio input ${i + 1}` }))
+}
+
+// The DJ mixer's output, coming in through an audio interface. Browser voice processing is off,
+// so the music passes through unchanged. Routed through a GainNode the ducker controls.
+export async function createLiveInput(deviceId) {
+  const context = getAudioContext()
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      deviceId: deviceId ? { exact: deviceId } : undefined,
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+      channelCount: { ideal: 2 },
+      latency: { ideal: 0.01 },
+    },
+  })
+  const source = context.createMediaStreamSource(stream)
+  const gain = context.createGain()
+  const analyser = context.createAnalyser()
+  analyser.fftSize = 1024
+  source.connect(analyser)
+  source.connect(gain)
+  gain.connect(context.destination)
+  const track = stream.getAudioTracks()[0]
+  const samples = new Float32Array(analyser.fftSize)
+  let cancelRamp = null
+
+  const adapter = {
+    isPlaying: () => track?.readyState === 'live',
+    getLevel: () => gain.gain.value,
+    setLevel(value) {
+      cancelRamp?.()
+      gain.gain.cancelScheduledValues(context.currentTime)
+      gain.gain.setValueAtTime(clamp01(value), context.currentTime)
+    },
+    rampTo(value, ms) {
+      cancelRamp?.()
+      const now = context.currentTime
+      const from = gain.gain.value
+      // Hold the current level, then run the curve just after it (a curve may not overlap another event).
+      gain.gain.cancelScheduledValues(now)
+      gain.gain.setValueAtTime(from, now)
+      gain.gain.setValueCurveAtTime(easedCurve(from, clamp01(value)), now + 0.01, Math.max(ms, 1) / 1000)
+      return new Promise(resolve => {
+        const timer = setTimeout(finish, ms)
+        function finish() {
+          clearTimeout(timer)
+          if (cancelRamp === finish) cancelRamp = null
+          resolve()
+        }
+        cancelRamp = finish
+      })
+    },
+  }
+
+  return {
+    adapter,
+    label: track?.label || 'Audio input',
+    // Signal strength 0..1 before the booth's volume, for the input meter.
+    meter() {
+      analyser.getFloatTimeDomainData(samples)
+      let peak = 0
+      for (const value of samples) peak = Math.max(peak, Math.abs(value))
+      return peak
+    },
+    onEnded(callback) {
+      track?.addEventListener('ended', callback)
+    },
+    destroy() {
+      cancelRamp?.()
+      stream.getTracks().forEach(t => t.stop())
+      source.disconnect()
+      gain.disconnect()
+      analyser.disconnect()
+    },
+  }
+}
+
 // ---- internal: levels ----
 
 function fullLevel() {
@@ -141,7 +230,8 @@ function fullLevel() {
 }
 
 function duckedLevel() {
-  return settings.duckLevel * fullLevel()
+  const full = fullLevel()
+  return Math.min(full, Math.max(settings.duckLevel * full, DUCK_FLOOR))
 }
 
 function currentMusic() {
@@ -368,9 +458,15 @@ function emit() {
   subscribers.forEach(callback => callback(current))
 }
 
-// Smoothstep: starts and ends gently, so a fade has no audible corner. Used by the YouTube fade.
+// Smoothstep: starts and ends gently, so a fade has no audible corner. Shared with the YouTube fade.
 export function ease(t) {
   return t * t * (3 - 2 * t)
+}
+
+function easedCurve(from, to) {
+  const curve = new Float32Array(CURVE_POINTS)
+  for (let i = 0; i < CURVE_POINTS; i += 1) curve[i] = from + (to - from) * ease(i / (CURVE_POINTS - 1))
+  return curve
 }
 
 function clamp01(value) {

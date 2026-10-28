@@ -165,6 +165,7 @@
 
 .booth-panel__head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -274,6 +275,85 @@
 }
 
 /* Search sits right under the tabs, above the video. */
+/* Music source switch in the panel header. */
+.booth-source {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #0f0f0f;
+}
+
+.booth-source button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.booth-source button[aria-pressed='true'] {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Hidden but still mounted, so the YouTube player node is never recreated. */
+.booth-music .is-hidden {
+  display: none;
+}
+
+/* Live input (DJ) */
+.booth-live {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.booth-live .booth-btn {
+  align-self: flex-start;
+}
+
+.booth-live .booth-field {
+  flex: none;
+}
+
+.booth-field select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #3a3a3a;
+  border-radius: 10px;
+  background: #0f0f0f;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+
+.booth-meter {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #262626;
+}
+
+.booth-meter__bar {
+  display: block;
+  height: 100%;
+  background: var(--tone-music);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.booth-meter__bar[data-clip='true'] {
+  background: var(--tone-cheer);
+}
+
 /* YouTube layout. Home: chips and grid above the deck. Watching: video and deck, list after it
    (beside it when the panel is wide enough). Sizes follow the panel, not the window. */
 .booth-music {

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { registerMusicSource, setMusicVolume } from '../../lib/ducking.js'
+import { createLiveInput, registerMusicSource, setMusicVolume } from '../../lib/ducking.js'
 import { createYouTubeSource, parseYouTubeInput } from '../../lib/youtubePlayer.js'
 import { fetchTopMusic, searchYouTube } from '../../lib/youtubeSearch.js'
 import { formatTime, Icon, Slider } from './boothParts.jsx'
 import { readStored, writeStored } from './boothStorage.js'
+import LiveInput from './LiveInput.jsx'
 
 const PLAYLIST_KEY = 'cheerspot.booth.playlist'
 const VOLUME_KEY = 'cheerspot.booth.musicVolume'
@@ -64,10 +65,15 @@ export default function MusicPlayer({ started, onToast }) {
   const [chip, setChip] = useState(null)
   const [volume, setVolume] = useState(() => readStored(VOLUME_KEY, 0.8))
   const [ytInfo, setYtInfo] = useState(EMPTY_YT)
+  // Music source: YouTube, or the DJ mixer coming in as a live input. Only one plays at a time.
+  const [source, setSource] = useState('youtube')
+  const [live, setLive] = useState(null)
+  const [connecting, setConnecting] = useState(false)
 
   const hostRef = useRef(null)
   const ytRef = useRef(null)
   const toastRef = useRef(onToast)
+  const liveRef = useRef(null)
 
   useEffect(() => {
     toastRef.current = onToast
@@ -94,6 +100,45 @@ export default function MusicPlayer({ started, onToast }) {
       setYtInfo(EMPTY_YT)
     }
   }, [started])
+
+  const disconnectLive = () => {
+    const current = liveRef.current
+    if (!current) return
+    liveRef.current = null
+    registerMusicSource('live', null)
+    current.destroy()
+    setLive(null)
+  }
+
+  const connectLive = async deviceId => {
+    if (connecting || liveRef.current) return
+    setConnecting(true)
+    ytRef.current?.pause()
+    try {
+      const input = await createLiveInput(deviceId)
+      liveRef.current = input
+      registerMusicSource('live', input.adapter)
+      input.onEnded(() => {
+        if (liveRef.current !== input) return
+        disconnectLive()
+        toastRef.current?.('Live input disconnected. Check the audio cable or interface.')
+      })
+      setLive(input)
+    } catch {
+      toastRef.current?.('Could not open the audio input. Allow microphone access and check the interface.')
+    } finally {
+      setConnecting(false)
+    }
+  }
+
+  // Close the live input when the booth closes.
+  useEffect(() => () => disconnectLive(), [])
+
+  const pickSource = next => {
+    setSource(next)
+    // Going live pauses YouTube; YouTube playing again turns the live input off (see below).
+    if (next === 'live') ytRef.current?.pause()
+  }
 
   const ytReady = started && !!window.YT?.Player
 
@@ -136,6 +181,7 @@ export default function MusicPlayer({ started, onToast }) {
     const parsed = parseYouTubeInput(`https://www.youtube.com/watch?v=${item.id}`)
     if (!parsed || !ytRef.current) return
     setUrlError('')
+    disconnectLive()
     ytRef.current.load(parsed)
     setPlayingResult(item)
   }
@@ -153,6 +199,7 @@ export default function MusicPlayer({ started, onToast }) {
     }
     setUrlError('')
     writeStored(PLAYLIST_KEY, url.trim())
+    disconnectLive()
     ytRef.current.load(parsed)
     setPlayingResult(null)
   }
@@ -163,6 +210,7 @@ export default function MusicPlayer({ started, onToast }) {
     if (ytInfo.playing) {
       yt.pause()
     } else {
+      disconnectLive()
       yt.play()
     }
   }
@@ -170,16 +218,37 @@ export default function MusicPlayer({ started, onToast }) {
   const ytPlaylist = ytInfo.kind === 'playlist'
   const trackNumber = ytInfo.index >= 0 ? ytInfo.index + 1 : 0
   // Once a video plays, the panel switches from YouTube's home grid to its watch page layout.
-  const watching = ytInfo.loaded
+  const watching = source === 'youtube' && ytInfo.loaded
+  const ytHidden = source === 'youtube' ? '' : ' is-hidden'
 
   return (
     <section className="booth-panel booth-music" aria-labelledby="booth-music-title">
       <header className="booth-panel__head">
         <h2 id="booth-music-title">Music</h2>
+        <div className="booth-source" role="group" aria-label="Music source">
+          <button type="button" aria-pressed={source === 'youtube'} onClick={() => pickSource('youtube')}>
+            YouTube
+          </button>
+          <button type="button" aria-pressed={source === 'live'} onClick={() => pickSource('live')}>
+            Live input (DJ){live ? ' ●' : ''}
+          </button>
+        </div>
       </header>
 
+      {source === 'live' && (
+        <LiveInput
+          started={started}
+          live={live}
+          connecting={connecting}
+          onConnect={connectLive}
+          onDisconnect={disconnectLive}
+          volume={volume}
+          onVolume={setVolume}
+        />
+      )}
+
       {/* Laid out like YouTube: search on top, then the home grid, or the watch page once a video plays. */}
-      <form className="booth-ytsearch" role="search" onSubmit={runSearch}>
+      <form className={`booth-ytsearch${ytHidden}`} role="search" onSubmit={runSearch}>
         <input
           type="search"
           autoComplete="off"
@@ -195,7 +264,7 @@ export default function MusicPlayer({ started, onToast }) {
       </form>
 
       {/* The wrapper is always rendered so the player node never remounts (that would stop the music). */}
-      <div className={`booth-ytlayout${watching ? ' is-watching' : ''}`}>
+      <div className={`booth-ytlayout${watching ? ' is-watching' : ''}${ytHidden}`}>
         <div className="booth-ytlayout__main">
           {/* YouTube will not play in a hidden or tiny player, so it shows once a link is loaded. */}
           <div
@@ -299,7 +368,7 @@ export default function MusicPlayer({ started, onToast }) {
         </div>
       </div>
 
-      <div className="booth-music__body">
+      <div className={`booth-music__body${ytHidden}`}>
         <form className="booth-url" onSubmit={loadPlaylist}>
           <label className="booth-field">
             <span className="booth-field__label">Playlist or video link</span>
