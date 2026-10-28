@@ -863,6 +863,12 @@
   gap: 4px;
 }
 
+.booth-volume__hint {
+  margin: -4px 0 8px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .booth-tapnote {
   margin: 0;
   padding: 10px 14px;

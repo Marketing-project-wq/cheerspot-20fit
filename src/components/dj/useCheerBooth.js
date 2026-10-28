@@ -15,7 +15,7 @@ import {
   preloadCheer,
   restartCheer,
   resumeCheer,
-  setMasterVolume,
+  setCheerVolume as applyCheerVolume,
   setMusicVolume as applyMusicVolume,
   skipCheer,
   startAudio,
@@ -27,6 +27,7 @@ import { formatTime } from './boothParts.jsx'
 import { readStored, writeStored } from './boothStorage.js'
 
 const MUSIC_VOLUME_KEY = 'cheerspot.booth.musicVolume'
+const CHEER_VOLUME_KEY = 'cheerspot.booth.cheerVolume'
 
 // Fixed gap between AUTO cheers. Fade timings are the defaults in ducking.js.
 const GAP_SEC = 90
@@ -35,8 +36,8 @@ const GAP_SEC = 90
 export default function useCheerBooth() {
   const [started, setStarted] = useState(false)
   const [mode, setMode] = useState('auto')
-  const [master, setMaster] = useState(1)
-  // Music volume is kept in this browser, so the DJ's level survives a refresh.
+  const [cheerVolume, setCheerVolume] = useState(() => readStored(CHEER_VOLUME_KEY, 1))
+  // Both volumes are kept in this browser, so the DJ's levels survive a refresh.
   const [musicVolume, setMusicVolume] = useState(() => readStored(MUSIC_VOLUME_KEY, 0.8))
   const [items, setItems] = useState(() => getQueue())
   const [status, setStatus] = useState(getBoothStatus)
@@ -93,8 +94,9 @@ export default function useCheerBooth() {
 
 
   useEffect(() => {
-    setMasterVolume(master)
-  }, [master])
+    applyCheerVolume(cheerVolume)
+    writeStored(CHEER_VOLUME_KEY, cheerVolume)
+  }, [cheerVolume])
 
   useEffect(() => {
     applyMusicVolume(musicVolume)
@@ -254,8 +256,8 @@ export default function useCheerBooth() {
     needsTap,
     mode,
     setMode,
-    master,
-    setMaster,
+    cheerVolume,
+    setCheerVolume,
     musicVolume,
     setMusicVolume,
     items,

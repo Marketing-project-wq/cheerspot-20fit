@@ -12,8 +12,6 @@ export default function CheerBooth({ onLogout }) {
     started,
     mode,
     setMode,
-    master,
-    setMaster,
     items,
     queuedIds,
     status,
@@ -89,7 +87,7 @@ export default function CheerBooth({ onLogout }) {
             onDelete={deleteItem}
           />
 
-          <VolumePanel master={master} onMaster={setMaster} music={booth.musicVolume} onMusic={booth.setMusicVolume} />
+          <VolumePanel cheer={booth.cheerVolume} onCheer={booth.setCheerVolume} music={booth.musicVolume} onMusic={booth.setMusicVolume} />
         </main>
       </div>
 

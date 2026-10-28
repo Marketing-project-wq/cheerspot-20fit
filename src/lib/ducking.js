@@ -16,7 +16,7 @@ const CHEER_OVERLAP = 0.6
 const CHEER_FADE_IN_S = 0.06
 const CHEER_FADE_OUT_S = 0.12
 // Ducked music never drops below this (6% on YouTube's 0-100 scale), so it never goes silent
-// under a cheer, even with low music or master volume. Only a volume of 0 means silence.
+// under a cheer, even with a low music volume. Only a volume of 0 means silence.
 const DUCK_FLOOR = 0.06
 const CURVE_POINTS = 64
 
@@ -26,7 +26,8 @@ let cheerGain = null
 let tickTimer = null
 
 let settings = { ...DEFAULT_DUCKING }
-let master = 1
+// Cheer volume and music volume are independent: one slider each in the booth.
+let cheerVolume = 1
 let musicVolume = 1
 const sources = {}
 let duckedMusic = null
@@ -52,7 +53,7 @@ export function getAudioContext() {
     compressor.ratio.value = 4
     compressor.knee.value = 10
     cheerGain = ctx.createGain()
-    cheerGain.gain.value = master
+    cheerGain.gain.value = cheerVolume
     compressor.connect(cheerGain)
     cheerGain.connect(ctx.destination)
     cheerInput = compressor
@@ -83,10 +84,10 @@ export function setDuckingSettings(next) {
   settings = { ...settings, ...next }
 }
 
-export function setMasterVolume(value) {
-  master = clamp01(value)
-  if (cheerGain) cheerGain.gain.setTargetAtTime(master, ctx.currentTime, 0.02)
-  applyLevels()
+// Sets the cheer level only; music has its own volume.
+export function setCheerVolume(value) {
+  cheerVolume = clamp01(value)
+  if (cheerGain) cheerGain.gain.setTargetAtTime(cheerVolume, ctx.currentTime, 0.02)
 }
 
 export function setMusicVolume(value) {
@@ -241,7 +242,7 @@ export async function createLiveInput(deviceId) {
 // ---- internal: levels ----
 
 function fullLevel() {
-  return musicVolume * master
+  return musicVolume
 }
 
 function duckedLevel() {
