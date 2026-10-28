@@ -52,6 +52,7 @@ export default function MusicPlayer({ started, onToast }) {
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState('')
+  const [playingResultId, setPlayingResultId] = useState(null)
   const [volume, setVolume] = useState(() => readStored(VOLUME_KEY, 0.8))
   const [ytInfo, setYtInfo] = useState(EMPTY_YT)
   const [localInfo, setLocalInfo] = useState(EMPTY_LOCAL)
@@ -128,6 +129,7 @@ export default function MusicPlayer({ started, onToast }) {
     setUrlError('')
     localRef.current?.pause()
     ytRef.current.load(parsed)
+    setPlayingResultId(item.id)
   }
 
   const loadPlaylist = event => {
@@ -146,6 +148,7 @@ export default function MusicPlayer({ started, onToast }) {
     // Only one music source plays at a time.
     localRef.current?.pause()
     ytRef.current.load(parsed)
+    setPlayingResultId(null)
   }
 
   const ytToggle = () => {
@@ -219,43 +222,49 @@ export default function MusicPlayer({ started, onToast }) {
 
       {tab === 'youtube' && (
         <div className="booth-search">
-          <form className="booth-url" onSubmit={runSearch}>
-            <label className="booth-field">
-              <span className="booth-field__label">Search YouTube</span>
-              <input
-                type="search"
-                autoComplete="off"
-                spellCheck={false}
-                placeholder="Artist or song name"
-                value={searchText}
-                onChange={event => setSearchText(event.target.value)}
-              />
-            </label>
-            <button type="submit" className="booth-btn" disabled={!searchText.trim() || searching || !started}>
-              {searching ? 'Searching...' : 'Search'}
+          {/* Laid out like YouTube: a pill search bar, then a grid of video cards. */}
+          <form className="booth-ytsearch" role="search" onSubmit={runSearch}>
+            <input
+              type="search"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="Search YouTube"
+              aria-label="Search YouTube"
+              value={searchText}
+              onChange={event => setSearchText(event.target.value)}
+            />
+            <button type="submit" disabled={!searchText.trim() || searching || !started} aria-label="Search">
+              {searching ? <span className="booth-ytsearch__spin" aria-hidden="true" /> : <Icon name="search" />}
             </button>
           </form>
           {searchError && <p className="booth-error" role="alert">{searchError}</p>}
           {results.length > 0 && (
-            <ul className="booth-results" aria-label="YouTube results">
-              {results.map(item => (
-                <li key={item.id} className="booth-result">
-                  {item.thumb && <img src={item.thumb} alt="" className="booth-result__thumb" />}
-                  <div className="booth-result__text">
-                    <span className="booth-result__title">{item.title}</span>
-                    <span className="booth-result__channel">{item.channel}</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="booth-btn booth-btn--icon"
-                    onClick={() => playResult(item)}
-                    disabled={!ytReady}
-                    aria-label={`Play ${item.title}`}
-                  >
-                    <Icon name="play" />
-                  </button>
-                </li>
-              ))}
+            <ul className="booth-ytgrid" aria-label="YouTube results">
+              {results.map(item => {
+                const current = item.id === playingResultId && ytInfo.loaded
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      className={`booth-ytcard${current ? ' is-current' : ''}`}
+                      onClick={() => playResult(item)}
+                      disabled={!ytReady}
+                      aria-label={`Play ${item.title}`}
+                      aria-current={current || undefined}
+                    >
+                      <span className="booth-ytcard__thumb">
+                        {item.thumb && <img src={item.thumb} alt="" loading="lazy" />}
+                        <span className="booth-ytcard__overlay" aria-hidden="true">
+                          <Icon name={current && ytInfo.playing ? 'pause' : 'play'} size={30} />
+                        </span>
+                        {current && <span className="booth-ytcard__badge">Now playing</span>}
+                      </span>
+                      <span className="booth-ytcard__title">{item.title}</span>
+                      <span className="booth-ytcard__channel">{item.channel}</span>
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </div>

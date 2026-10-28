@@ -13,7 +13,11 @@ const PATHS = {
   drag: 'M9 5h2v2H9zM13 5h2v2h-2zM9 11h2v2H9zM13 11h2v2h-2zM9 17h2v2H9zM13 17h2v2h-2z',
   volume: 'M4 9v6h4l5 4V5L8 9H4zM16 8.5a4.5 4.5 0 0 1 0 7M18.5 6a8 8 0 0 1 0 12',
   chevron: 'M6 9l6 6 6-6',
+  search: 'M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM20 20l-4.8-4.8',
 }
+
+// Icons drawn as outlines rather than filled shapes.
+const STROKED = new Set(['shuffle', 'replay', 'volume', 'chevron', 'search'])
 
 export function Icon({ name, size = 22 }) {
   return (
@@ -21,8 +25,8 @@ export function Icon({ name, size = 22 }) {
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill={name === 'shuffle' || name === 'replay' || name === 'volume' || name === 'chevron' ? 'none' : 'currentColor'}
-      stroke={name === 'shuffle' || name === 'replay' || name === 'volume' || name === 'chevron' ? 'currentColor' : 'none'}
+      fill={STROKED.has(name) ? 'none' : 'currentColor'}
+      stroke={STROKED.has(name) ? 'currentColor' : 'none'}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
