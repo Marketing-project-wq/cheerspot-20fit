@@ -4,12 +4,18 @@
 
 export const DEFAULT_DUCKING = {
   duckLevel: 0.2,
-  fadeDownMs: 800,
-  fadeUpMs: 1500,
-  delayBeforeUpMs: 1000,
+  fadeDownMs: 1000,
+  fadeUpMs: 2500,
+  delayBeforeUpMs: 1200,
 }
 
 const TICK_MS = 250
+// The cheer starts once the music is this far into its fade down, so there is no silent gap.
+const CHEER_OVERLAP = 0.6
+// Short fades on the cheer itself, so start, pause and skip never click.
+const CHEER_FADE_IN_S = 0.06
+const CHEER_FADE_OUT_S = 0.12
+const CURVE_POINTS = 64
 
 let ctx = null
 let cheerInput = null
@@ -221,9 +227,11 @@ export function createLocalMusic({ onChange, onError }) {
     rampTo(value, ms) {
       cancelRamp?.()
       const now = context.currentTime
+      const from = gain.gain.value
+      // Hold the current level, then run the curve just after it (a curve may not overlap another event).
       gain.gain.cancelScheduledValues(now)
-      gain.gain.setValueAtTime(gain.gain.value, now)
-      gain.gain.linearRampToValueAtTime(clamp01(value), now + Math.max(ms, 1) / 1000)
+      gain.gain.setValueAtTime(from, now)
+      gain.gain.setValueCurveAtTime(easedCurve(from, clamp01(value)), now + 0.01, Math.max(ms, 1) / 1000)
       return new Promise(resolve => {
         const timer = setTimeout(finish, ms)
         function finish() {
@@ -333,14 +341,21 @@ async function runQueue() {
         job.handlers.onError?.(err)
         continue
       }
-      await duckForCheer()
+      // Start the cheer while the music is still fading down. The fade finishes underneath it.
+      const ducking = duckForCheer()
+      await Promise.race([ducking, delay(settings.fadeDownMs * CHEER_OVERLAP)])
       const reason = await playCheerAudio(job, buffer)
+      await ducking
       job.handlers.onEnd?.(reason)
     }
   } finally {
     running = false
     if (pending.length) runQueue().catch(err => console.error('Booth queue failed', err))
   }
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 function waitForPending(ms) {
@@ -397,11 +412,16 @@ function startSource(p, offset) {
   const context = getAudioContext()
   const node = context.createBufferSource()
   node.buffer = p.buffer
-  node.connect(cheerInput)
+  const fade = context.createGain()
+  fade.gain.setValueAtTime(0, context.currentTime)
+  fade.gain.linearRampToValueAtTime(1, context.currentTime + CHEER_FADE_IN_S)
+  node.connect(fade)
+  fade.connect(cheerInput)
   node.onended = () => {
     if (playback === p && p.source === node) finishPlayback('ended')
   }
   p.source = node
+  p.fade = fade
   p.offset = offset
   p.startAt = context.currentTime
   node.start(0, offset)
@@ -412,14 +432,27 @@ function haltSource(p) {
   if (!p.source) return
   p.offset = positionOf(p)
   const node = p.source
+  const fade = p.fade
   p.source = null
+  p.fade = null
   node.onended = null
+  // Fade out briefly, then stop. The old node finishes on its own; a resume uses a new one.
+  const context = getAudioContext()
+  const now = context.currentTime
+  fade.gain.cancelScheduledValues(now)
+  fade.gain.setValueAtTime(fade.gain.value, now)
+  fade.gain.linearRampToValueAtTime(0, now + CHEER_FADE_OUT_S)
+  node.onended = () => {
+    node.disconnect()
+    fade.disconnect()
+  }
   try {
-    node.stop()
+    node.stop(now + CHEER_FADE_OUT_S)
   } catch {
     // Already stopped.
+    node.disconnect()
+    fade.disconnect()
   }
-  node.disconnect()
 }
 
 function positionOf(p) {
@@ -479,6 +512,17 @@ function emit() {
   if (!changed) return
   current = next
   subscribers.forEach(callback => callback(current))
+}
+
+// Smoothstep: starts and ends gently, so a fade has no audible corner. Shared with the YouTube fade.
+export function ease(t) {
+  return t * t * (3 - 2 * t)
+}
+
+function easedCurve(from, to) {
+  const curve = new Float32Array(CURVE_POINTS)
+  for (let i = 0; i < CURVE_POINTS; i += 1) curve[i] = from + (to - from) * ease(i / (CURVE_POINTS - 1))
+  return curve
 }
 
 function clamp01(value) {

@@ -18,7 +18,7 @@ import { formatTime } from './boothParts.jsx'
 import { readStored, writeStored } from './boothStorage.js'
 
 const SETTINGS_KEY = 'cheerspot.booth.settings'
-const DEFAULT_SETTINGS = { duckLevel: 0.2, fadeDownMs: 800, fadeUpMs: 1500, delayBeforeUpMs: 1000, gapSec: 90 }
+const DEFAULT_SETTINGS = { duckLevel: 0.2, fadeDownMs: 1000, fadeUpMs: 2500, delayBeforeUpMs: 1200, gapSec: 90 }
 
 function clampSettings(input) {
   const num = (value, fallback, min, max) => {

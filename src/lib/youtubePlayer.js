@@ -1,5 +1,7 @@
 // YouTube IFrame Player wrapper for the booth. YouTube has no gain node, so fades step setVolume().
 
+import { ease } from './ducking.js'
+
 const API_URL = 'https://www.youtube.com/iframe_api'
 const FADE_STEP_MS = 50
 const SKIP_CODES = [100, 101, 150]
@@ -182,7 +184,7 @@ export function createYouTubeSource(container, { onChange, onSkip } = {}) {
       cancelRamp?.()
       writeVolume(value)
     },
-    // Steps the volume every FADE_STEP_MS. A new ramp or setLevel cancels this one.
+    // Steps the volume every FADE_STEP_MS along an eased curve. A new ramp or setLevel cancels this one.
     rampTo(target, ms) {
       cancelRamp?.()
       const start = readVolume()
@@ -191,7 +193,7 @@ export function createYouTubeSource(container, { onChange, onSkip } = {}) {
       return new Promise(resolve => {
         const timer = setInterval(() => {
           step += 1
-          writeVolume(start + (target - start) * (step / steps))
+          writeVolume(start + (target - start) * ease(step / steps))
           if (step >= steps) finish()
         }, FADE_STEP_MS)
         function finish() {
