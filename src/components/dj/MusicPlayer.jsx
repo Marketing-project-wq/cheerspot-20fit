@@ -217,6 +217,50 @@ export default function MusicPlayer({ started, onToast }) {
         </button>
       </div>
 
+      {tab === 'youtube' && (
+        <div className="booth-search">
+          <form className="booth-url" onSubmit={runSearch}>
+            <label className="booth-field">
+              <span className="booth-field__label">Search YouTube</span>
+              <input
+                type="search"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="Artist or song name"
+                value={searchText}
+                onChange={event => setSearchText(event.target.value)}
+              />
+            </label>
+            <button type="submit" className="booth-btn" disabled={!searchText.trim() || searching || !started}>
+              {searching ? 'Searching...' : 'Search'}
+            </button>
+          </form>
+          {searchError && <p className="booth-error" role="alert">{searchError}</p>}
+          {results.length > 0 && (
+            <ul className="booth-results" aria-label="YouTube results">
+              {results.map(item => (
+                <li key={item.id} className="booth-result">
+                  {item.thumb && <img src={item.thumb} alt="" className="booth-result__thumb" />}
+                  <div className="booth-result__text">
+                    <span className="booth-result__title">{item.title}</span>
+                    <span className="booth-result__channel">{item.channel}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="booth-btn booth-btn--icon"
+                    onClick={() => playResult(item)}
+                    disabled={!ytReady}
+                    aria-label={`Play ${item.title}`}
+                  >
+                    <Icon name="play" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       {/* Always mounted: the YouTube player lives in here, even while the Local files tab is open.
           YouTube will not play in a hidden or tiny player, so it shows once a link is loaded. */}
       <div
@@ -298,46 +342,7 @@ export default function MusicPlayer({ started, onToast }) {
           </form>
           {urlError && <p className="booth-error" role="alert">{urlError}</p>}
           {!ytReady && <p className="booth-hint">Start the session to load YouTube.</p>}
-          {ytReady && !ytInfo.loaded && <p className="booth-hint">Paste a link and press Load, or search below.</p>}
-          <form className="booth-url" onSubmit={runSearch}>
-            <label className="booth-field">
-              <span className="booth-field__label">Search YouTube</span>
-              <input
-                type="search"
-                autoComplete="off"
-                spellCheck={false}
-                placeholder="Artist or song name"
-                value={searchText}
-                onChange={event => setSearchText(event.target.value)}
-              />
-            </label>
-            <button type="submit" className="booth-btn" disabled={!searchText.trim() || searching || !started}>
-              {searching ? 'Searching...' : 'Search'}
-            </button>
-          </form>
-          {searchError && <p className="booth-error" role="alert">{searchError}</p>}
-          {results.length > 0 && (
-            <ul className="booth-results" aria-label="YouTube results">
-              {results.map(item => (
-                <li key={item.id} className="booth-result">
-                  {item.thumb && <img src={item.thumb} alt="" className="booth-result__thumb" />}
-                  <div className="booth-result__text">
-                    <span className="booth-result__title">{item.title}</span>
-                    <span className="booth-result__channel">{item.channel}</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="booth-btn booth-btn--icon"
-                    onClick={() => playResult(item)}
-                    disabled={!ytReady}
-                    aria-label={`Play ${item.title}`}
-                  >
-                    <Icon name="play" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          {ytReady && !ytInfo.loaded && <p className="booth-hint">Search above, or paste a link and press Load.</p>}
         </div>
       ) : (
         <div role="tabpanel" id="panel-local" aria-labelledby="tab-local" className="booth-music__body">
