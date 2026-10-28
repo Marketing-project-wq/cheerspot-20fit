@@ -55,12 +55,6 @@ export default function CheerBooth({ onLogout }) {
         </button>
       </header>
 
-      {booth.needsTap && (
-        <p className="booth-tapnote" role="status">
-          Klik di mana saja untuk menyalakan suara booth.
-        </p>
-      )}
-
       <div className="booth-body">
         <main className="booth-grid">
           <MusicPlayer started={started} onToast={booth.showToast} />

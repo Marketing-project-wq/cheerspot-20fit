@@ -144,7 +144,8 @@ export default function useCheerBooth() {
   }, [started, playItem])
 
   // The booth starts by itself. Signing in on /dj is a click, so the browser allows sound right away.
-  // A remembered session opens without one: then sound waits for the first click or key press anywhere.
+  // A remembered session opens without one: then sound starts on the first click or key press anywhere,
+  // without a note on screen.
   const startingRef = useRef(false)
   const [needsTap, setNeedsTap] = useState(false)
 
@@ -253,7 +254,6 @@ export default function useCheerBooth() {
 
   return {
     started,
-    needsTap,
     mode,
     setMode,
     cheerVolume,

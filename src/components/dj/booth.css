@@ -840,7 +840,7 @@
   color: var(--muted);
 }
 
-/* Toast and the sound-on note */
+/* Toast */
 .booth-toast {
   position: fixed;
   left: 50%;
@@ -867,17 +867,6 @@
   margin: -4px 0 8px;
   color: var(--muted);
   font-size: 0.8rem;
-}
-
-.booth-tapnote {
-  margin: 0;
-  padding: 10px 14px;
-  border: 1px solid var(--accent);
-  border-radius: 12px;
-  background: rgba(220, 38, 38, 0.12);
-  color: var(--text);
-  font-weight: 700;
-  text-align: center;
 }
 
 @media (max-width: 480px) {
