@@ -1713,13 +1713,64 @@
   }
 }
 
-.adm-event-pick {
+.adm-events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: 100%;
-  max-width: 360px;
+  gap: 6px;
 }
-.adm-event-pick select.adm-input-plain {
-  width: 100%;
+.adm-events__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 6px 8px 6px 14px;
+  border: 1.5px solid #e3e3dc;
+  border-radius: 10px;
+}
+.adm-events__row.is-on {
+  border-color: #22c55e;
+  background: #f2fbf5;
+}
+.adm-events__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.adm-events__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.adm-events__state {
+  font-size: 13px;
+  font-weight: 700;
+  color: #55554f;
+}
+.adm-events__row.is-on .adm-events__state {
+  color: #15803d;
+}
+.adm-events__remove {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: #77776f;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.adm-events__remove:hover {
+  background: #fff0f0;
+  color: #bf0000;
 }

@@ -19,38 +19,57 @@ export default function SettingsPanel({ m, lang }) {
       <div className="adm-settings">
         <div className="adm-card-plain">
           <div className="adm-settings__text">
-            <span className="adm-settings__title">{S.evName}</span>
-            <span className="adm-settings__sub">{S.evSub}</span>
+            <span className="adm-settings__title">{S.evList}</span>
+            <span className="adm-settings__sub">{S.evSubNew}</span>
           </div>
-          <div className="adm-event-pick">
-            <select
+          {m.events.length === 0 && <span className="adm-settings__sub">{S.evEmpty}</span>}
+          <ul className="adm-events">
+            {m.events.map(name => {
+              const on = name === m.eventName
+              return (
+                <li key={name} className={`adm-events__row${on ? ' is-on' : ''}`}>
+                  <span className="adm-events__name">{name}</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={on}
+                    aria-label={`${name}: ${on ? S.evOn : S.evOff}`}
+                    className="adm-events__toggle"
+                    onClick={() => m.toggleEvent(name)}
+                  >
+                    <span className="adm-events__state">{on ? S.evOn : S.evOff}</span>
+                    <span className={`adm-switch${on ? ' is-on' : ''}`}>
+                      <span className="adm-switch__knob" />
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="adm-events__remove"
+                    aria-label={`${S.evRemove}: ${name}`}
+                    title={S.evRemove}
+                    onClick={() => m.removeEvent(name)}
+                  >
+                    ×
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          <div className="adm-add">
+            <input
+              type="text"
               className="adm-input-plain"
-              aria-label={S.evName}
-              value={m.eventName}
-              onChange={e => m.setEventName(e.target.value)}
-            >
-              {m.events.map(name => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-            <div className="adm-add">
-              <input
-                type="text"
-                className="adm-input-plain"
-                aria-label={S.evAdd}
-                value={m.eventIn}
-                placeholder={S.evPh}
-                onChange={e => m.setEventIn(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') m.addEvent()
-                }}
-              />
-              <button type="button" className="adm-btn-dark-sm" onClick={m.addEvent}>
-                {S.evAdd}
-              </button>
-            </div>
+              aria-label={S.evAdd}
+              value={m.eventIn}
+              placeholder={S.evPh}
+              onChange={e => m.setEventIn(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') m.addEvent()
+              }}
+            />
+            <button type="button" className="adm-btn-dark-sm" onClick={m.addEvent}>
+              {S.evAdd}
+            </button>
           </div>
         </div>
 

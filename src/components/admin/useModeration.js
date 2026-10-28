@@ -44,13 +44,14 @@ export default function useModeration({ lang, liveFeed }) {
   useEffect(() => {
     keepValue('cz-admin-settings', settings)
   }, [settings])
-  // Events the admin has entered. The active one drives the QR link.
+  // Events the admin has entered. At most one is active: it drives the QR link. '' means none.
   const [events, setEvents] = useState(() => {
     const saved = readKept('cz-admin-events', null) ?? readSaved('cz-admin-events', null)
     return Array.isArray(saved) && saved.length ? saved : [DEFAULT_EVENT]
   })
   const [eventName, setEventName] = useState(() => {
     const saved = readKept('cz-admin-event', null) ?? readSaved('cz-admin-event', DEFAULT_EVENT)
+    if (saved === '') return ''
     return events.includes(saved) ? saved : events[0]
   })
   const [eventIn, setEventIn] = useState('')
@@ -342,12 +343,21 @@ export default function useModeration({ lang, liveFeed }) {
   const resetWords = () => setWordChanges({})
 
   // Adds the typed event to the list and makes it the active one, which updates the QR.
+  // A new event becomes active only when no event is active yet.
   const addEvent = () => {
     const name = eventIn.trim()
     if (!name) return
     setEvents(list => (list.includes(name) ? list : [...list, name]))
-    setEventName(name)
+    setEventName(cur => cur || name)
     setEventIn('')
+  }
+
+  // Turning an event on makes it the only active one; turning the active one off leaves none.
+  const toggleEvent = name => setEventName(cur => (cur === name ? '' : name))
+
+  const removeEvent = name => {
+    setEvents(list => list.filter(x => x !== name))
+    setEventName(cur => (cur === name ? '' : cur))
   }
 
   const copyLink = () => {
@@ -412,6 +422,8 @@ export default function useModeration({ lang, liveFeed }) {
     eventIn,
     setEventIn,
     addEvent,
+    toggleEvent,
+    removeEvent,
     maxDur,
     setMaxDur,
     words,

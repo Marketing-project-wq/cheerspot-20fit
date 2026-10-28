@@ -98,4 +98,5 @@ export const eventSlug = name =>
 
 // The page spectators open from the QR, tagged with the active event. Uses the current domain,
 // so it works on Railway and on cheerspot.20fit.id.
-export const cheerUrl = eventName => `${window.location.origin}/cheer?event=${eventSlug(eventName)}`
+export const cheerUrl = eventName =>
+  eventName ? `${window.location.origin}/cheer?event=${eventSlug(eventName)}` : `${window.location.origin}/cheer`

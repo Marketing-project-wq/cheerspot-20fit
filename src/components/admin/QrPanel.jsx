@@ -30,7 +30,7 @@ export default function QrPanel({ lang, eventName, copied, onCopy }) {
       <div className="adm-qr">
         <div className="adm-qr__poster">
           <Logo className="adm-logo--qr" />
-          <div className="adm-qr__event">{eventName}</div>
+          {eventName && <div className="adm-qr__event">{eventName}</div>}
           <div className="adm-qr__grid" style={{ '--qr-n': size }}>
             {Array.from(qr.modules.data, (on, i) => (
               <span key={i} className={on ? 'adm-qr__cell is-on' : 'adm-qr__cell'} />
@@ -57,6 +57,7 @@ export default function QrPanel({ lang, eventName, copied, onCopy }) {
               {S.print}
             </button>
           </div>
+          {!eventName && <p className="adm-qr__note">{S.evNone}</p>}
           <p className="adm-qr__note">{S.qrNote}</p>
         </div>
       </div>
