@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { listAudioInputs } from '../../lib/ducking.js'
-import { Slider } from './boothParts.jsx'
 
 // Live input (DJ): the DJ mixer's output comes into this laptop and is ducked like YouTube.
-// MusicPlayer owns the connection; this panel shows the device picker, meter and volume.
-export default function LiveInput({ started, live, connecting, onConnect, onDisconnect, volume, onVolume }) {
+// MusicPlayer owns the connection; this panel shows the device picker and the input meter.
+export default function LiveInput({ started, live, connecting, onConnect, onDisconnect }) {
   const [devices, setDevices] = useState([])
   const [deviceId, setDeviceId] = useState('')
   const meterRef = useRef(null)
@@ -89,16 +88,6 @@ export default function LiveInput({ started, live, connecting, onConnect, onDisc
       <div className="booth-meter" aria-hidden="true">
         <span ref={meterRef} className="booth-meter__bar" />
       </div>
-
-      <Slider
-        id="live-volume"
-        label="Music volume"
-        value={Math.round(volume * 100)}
-        min={0}
-        max={100}
-        format={value => `${value}%`}
-        onChange={value => onVolume(value / 100)}
-      />
     </div>
   )
 }

@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { createLiveInput, registerMusicSource, setMusicVolume } from '../../lib/ducking.js'
+import { createLiveInput, registerMusicSource } from '../../lib/ducking.js'
 import { createYouTubeSource, parseYouTubeInput } from '../../lib/youtubePlayer.js'
 import { fetchTopMusic, searchYouTube } from '../../lib/youtubeSearch.js'
-import { formatTime, Icon, Slider } from './boothParts.jsx'
+import { formatTime, Icon } from './boothParts.jsx'
 import { readStored, writeStored } from './boothStorage.js'
 import LiveInput from './LiveInput.jsx'
 
 const PLAYLIST_KEY = 'cheerspot.booth.playlist'
-const VOLUME_KEY = 'cheerspot.booth.musicVolume'
 
 // Chips above the grid, like YouTube's topic row. Each one runs a search; Trending loads the music chart.
 const CHIPS = [
@@ -63,7 +62,6 @@ export default function MusicPlayer({ started, onToast }) {
   const [searchError, setSearchError] = useState('')
   const [playingResult, setPlayingResult] = useState(null)
   const [chip, setChip] = useState(null)
-  const [volume, setVolume] = useState(() => readStored(VOLUME_KEY, 0.8))
   const [ytInfo, setYtInfo] = useState(EMPTY_YT)
   // Music source: YouTube, or the DJ mixer coming in as a live input. Only one plays at a time.
   const [source, setSource] = useState('youtube')
@@ -78,11 +76,6 @@ export default function MusicPlayer({ started, onToast }) {
   useEffect(() => {
     toastRef.current = onToast
   }, [onToast])
-
-  useEffect(() => {
-    setMusicVolume(volume)
-    writeStored(VOLUME_KEY, volume)
-  }, [volume])
 
   // Players are created once the booth sound is on. Only one source plays at a time.
   useEffect(() => {
@@ -242,8 +235,6 @@ export default function MusicPlayer({ started, onToast }) {
           connecting={connecting}
           onConnect={connectLive}
           onDisconnect={disconnectLive}
-          volume={volume}
-          onVolume={setVolume}
         />
       )}
 
@@ -273,7 +264,7 @@ export default function MusicPlayer({ started, onToast }) {
             aria-hidden={!ytInfo.loaded}
           />
 
-          {/* Deck: what is playing and its controls, right under the video. */}
+          {/* Deck: what is playing and its controls, right under the video. Volume is under the queue. */}
           <div className="booth-deck">
             <div className="booth-now-track" aria-live="polite">
               <span className="booth-now-track__label">Now playing</span>
@@ -298,15 +289,6 @@ export default function MusicPlayer({ started, onToast }) {
                 onToggle={ytToggle}
                 onNext={() => ytRef.current?.next()}
                 onShuffle={() => ytRef.current?.toggleShuffle()}
-              />
-              <Slider
-                id="music-volume"
-                label="Music volume"
-                value={Math.round(volume * 100)}
-                min={0}
-                max={100}
-                format={value => `${value}%`}
-                onChange={value => setVolume(value / 100)}
               />
             </div>
           </div>

@@ -16,6 +16,7 @@ import {
   restartCheer,
   resumeCheer,
   setMasterVolume,
+  setMusicVolume as applyMusicVolume,
   skipCheer,
   startAudio,
   stopAudio,
@@ -23,6 +24,9 @@ import {
 } from '../../lib/ducking.js'
 import { loadYouTubeApi } from '../../lib/youtubePlayer.js'
 import { formatTime } from './boothParts.jsx'
+import { readStored, writeStored } from './boothStorage.js'
+
+const MUSIC_VOLUME_KEY = 'cheerspot.booth.musicVolume'
 
 // Fixed gap between AUTO cheers. Fade timings are the defaults in ducking.js.
 const GAP_SEC = 90
@@ -32,6 +36,8 @@ export default function useCheerBooth() {
   const [started, setStarted] = useState(false)
   const [mode, setMode] = useState('auto')
   const [master, setMaster] = useState(1)
+  // Music volume is kept in this browser, so the DJ's level survives a refresh.
+  const [musicVolume, setMusicVolume] = useState(() => readStored(MUSIC_VOLUME_KEY, 0.8))
   const [items, setItems] = useState(() => getQueue())
   const [status, setStatus] = useState(getBoothStatus)
   const [lastPlayedId, setLastPlayedId] = useState(null)
@@ -89,6 +95,11 @@ export default function useCheerBooth() {
   useEffect(() => {
     setMasterVolume(master)
   }, [master])
+
+  useEffect(() => {
+    applyMusicVolume(musicVolume)
+    writeStored(MUSIC_VOLUME_KEY, musicVolume)
+  }, [musicVolume])
 
   // A cheer plays with the handlers below. markPlayed runs when audio starts, so the queue stays accurate.
   const playItem = useCallback(
@@ -245,6 +256,8 @@ export default function useCheerBooth() {
     setMode,
     master,
     setMaster,
+    musicVolume,
+    setMusicVolume,
     items,
     approved,
     queuedIds: status.queued,

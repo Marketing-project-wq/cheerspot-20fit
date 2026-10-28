@@ -2,8 +2,8 @@ import { LOGO_ALT, LOGO_URL } from '../../lib/brand.js'
 import CheerNowPlaying from './CheerNowPlaying.jsx'
 import CheerQueue from './CheerQueue.jsx'
 import MusicPlayer from './MusicPlayer.jsx'
-import { Slider } from './boothParts.jsx'
 import useCheerBooth from './useCheerBooth.js'
+import VolumePanel from './VolumePanel.jsx'
 import './booth.css'
 
 export default function CheerBooth({ onLogout }) {
@@ -52,18 +52,6 @@ export default function CheerBooth({ onLogout }) {
           </button>
         </div>
 
-        <div className="booth-master">
-          <Slider
-            id="master-volume"
-            label="Master"
-            value={Math.round(master * 100)}
-            min={0}
-            max={100}
-            format={value => `${value}%`}
-            onChange={value => setMaster(value / 100)}
-          />
-        </div>
-
         <button type="button" className="booth-btn booth-logout" onClick={onLogout}>
           Log out
         </button>
@@ -100,6 +88,8 @@ export default function CheerBooth({ onLogout }) {
             onReorder={reorder}
             onDelete={deleteItem}
           />
+
+          <VolumePanel master={master} onMaster={setMaster} music={booth.musicVolume} onMusic={booth.setMusicVolume} />
         </main>
       </div>
 
