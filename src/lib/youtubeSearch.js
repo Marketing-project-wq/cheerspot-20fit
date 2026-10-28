@@ -7,3 +7,11 @@ export async function searchYouTube(query) {
   if (error) throw error
   return data?.items ?? []
 }
+
+// Popular music videos in Indonesia, for the grid the booth shows before any search.
+export async function fetchTopMusic() {
+  if (!supabase) throw new Error('Supabase is not configured')
+  const { data, error } = await supabase.functions.invoke('youtube-search', { body: { chart: 'music' } })
+  if (error) throw error
+  return data?.items ?? []
+}

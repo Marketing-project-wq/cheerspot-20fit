@@ -3,6 +3,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 // Searches YouTube for the booth. The API key stays on the server; only signed-in staff can call this.
 const STAFF_ROLES = ['superadmin', 'admin']
 const MAX_QUERY = 100
+const MAX_RESULTS = 12
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -31,19 +32,31 @@ async function handle(req: Request): Promise<Response> {
   const role = userData?.user?.app_metadata?.role
   if (userError || !STAFF_ROLES.includes(role)) return new Response('Staff only', { status: 403 })
 
-  const { q } = await req.json().catch(() => ({ q: '' }))
-  const query = typeof q === 'string' ? q.trim().slice(0, MAX_QUERY) : ''
-  if (!query) return new Response('Type what to search for', { status: 400 })
-
+  const input = await req.json().catch(() => ({}))
   const apiKey = Deno.env.get('YOUTUBE_API_KEY')
   if (!apiKey) return new Response('YouTube key is not set', { status: 500 })
 
+  // { chart: 'music' } returns popular music videos in Indonesia (1 quota unit), for the booth's start grid.
+  if (input?.chart === 'music') {
+    const videos = await fetchVideos(apiKey, {
+      chart: 'mostPopular',
+      videoCategoryId: '10',
+      regionCode: 'ID',
+      maxResults: String(MAX_RESULTS),
+    })
+    if (!videos) return new Response('YouTube search failed', { status: 502 })
+    return Response.json({ items: videos })
+  }
+
+  const query = typeof input?.q === 'string' ? input.q.trim().slice(0, MAX_QUERY) : ''
+  if (!query) return new Response('Type what to search for', { status: 400 })
+
   const params = new URLSearchParams({
-    part: 'snippet',
+    part: 'id',
     type: 'video',
     videoEmbeddable: 'true',
     safeSearch: 'moderate',
-    maxResults: '10',
+    maxResults: String(MAX_RESULTS),
     q: query,
     key: apiKey,
   })
@@ -51,32 +64,34 @@ async function handle(req: Request): Promise<Response> {
   if (!res.ok) return new Response('YouTube search failed', { status: 502 })
 
   const body = await res.json()
-  const items = (body.items ?? [])
-    // Upcoming streams cannot be played yet.
-    .filter((item: any) => item.id?.videoId && item.snippet?.liveBroadcastContent !== 'upcoming')
-    .map((item: any) => ({
-      id: item.id.videoId,
-      title: item.snippet?.title ?? '',
-      channel: item.snippet?.channelTitle ?? '',
-      thumb: item.snippet?.thumbnails?.medium?.url ?? item.snippet?.thumbnails?.default?.url ?? '',
-      live: item.snippet?.liveBroadcastContent === 'live',
-      durationSec: null as number | null,
+  const ids = (body.items ?? []).map((item: any) => item.id?.videoId).filter(Boolean)
+  if (!ids.length) return Response.json({ items: [] })
+
+  // Details (title, duration, live, embeddable) come from videos.list, 1 more quota unit. Search order is kept.
+  const videos = await fetchVideos(apiKey, { id: ids.join(',') })
+  if (!videos) return new Response('YouTube search failed', { status: 502 })
+  const byId = new Map(videos.map(video => [video.id, video]))
+  return Response.json({ items: ids.map((id: string) => byId.get(id)).filter(Boolean) })
+}
+
+type Video = { id: string; title: string; channel: string; thumb: string; live: boolean; durationSec: number | null }
+
+// Calls videos.list and keeps only videos the booth can play: embeddable and not an upcoming stream.
+async function fetchVideos(apiKey: string, query: Record<string, string>): Promise<Video[] | null> {
+  const params = new URLSearchParams({ part: 'snippet,contentDetails,status', ...query, key: apiKey })
+  const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params}`).catch(() => null)
+  if (!res?.ok) return null
+  const body = await res.json()
+  return (body.items ?? [])
+    .filter((v: any) => v.status?.embeddable !== false && v.snippet?.liveBroadcastContent !== 'upcoming')
+    .map((v: any) => ({
+      id: v.id,
+      title: v.snippet?.title ?? '',
+      channel: v.snippet?.channelTitle ?? '',
+      thumb: v.snippet?.thumbnails?.medium?.url ?? v.snippet?.thumbnails?.default?.url ?? '',
+      live: v.snippet?.liveBroadcastContent === 'live',
+      durationSec: parseDuration(v.contentDetails?.duration),
     }))
-
-  // Durations come from a second call (1 quota unit). If it fails, results still show without them.
-  if (items.length) {
-    const details = new URLSearchParams({ part: 'contentDetails', id: items.map((item: any) => item.id).join(','), key: apiKey })
-    const detailRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?${details}`).catch(() => null)
-    if (detailRes?.ok) {
-      const detailBody = await detailRes.json()
-      const byId = new Map((detailBody.items ?? []).map((v: any) => [v.id, parseDuration(v.contentDetails?.duration)]))
-      items.forEach((item: any) => {
-        item.durationSec = byId.get(item.id) ?? null
-      })
-    }
-  }
-
-  return Response.json({ items })
 }
 
 // ISO 8601 duration such as PT1H29M22S. Live streams report P0D, which becomes null.

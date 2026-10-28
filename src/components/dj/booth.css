@@ -755,6 +755,43 @@
   }
 }
 
+.booth-ytchips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.booth-ytchip {
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #272727;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.booth-ytchip:hover:not(:disabled) {
+  background: #3a3a3a;
+}
+
+.booth-ytchip.is-on {
+  background: #f1f1f1;
+  color: #0f0f0f;
+}
+
+.booth-ytchip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .booth-ytgrid {
   list-style: none;
   margin: 0;

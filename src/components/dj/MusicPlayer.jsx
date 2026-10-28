@@ -1,13 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
 import { createLocalMusic, registerMusicSource, setMusicVolume } from '../../lib/ducking.js'
 import { createYouTubeSource, parseYouTubeInput } from '../../lib/youtubePlayer.js'
-import { searchYouTube } from '../../lib/youtubeSearch.js'
+import { fetchTopMusic, searchYouTube } from '../../lib/youtubeSearch.js'
 import { formatTime, Icon, Slider } from './boothParts.jsx'
 import { readStored, writeStored } from './boothStorage.js'
 
 const PLAYLIST_KEY = 'cheerspot.booth.playlist'
 const VOLUME_KEY = 'cheerspot.booth.musicVolume'
 const AUDIO_EXT = /\.(mp3|wav|m4a|aac|ogg|oga|flac|opus|webm)$/i
+
+// Chips above the grid, like YouTube's topic row. Each one runs a search; Trending loads the music chart.
+const CHIPS = [
+  { key: 'trending', label: 'Trending' },
+  { key: 'hyrox', label: 'HYROX', q: 'hyrox workout music mix' },
+  { key: 'workout', label: 'Workout mix', q: 'workout music mix' },
+  { key: 'hiphop', label: 'Hip hop', q: 'hip hop workout mix' },
+  { key: 'edm', label: 'EDM', q: 'edm workout mix' },
+  { key: 'running', label: 'Running', q: 'running music 170 bpm' },
+  { key: 'jersey', label: 'Jersey club', q: 'jersey club mix' },
+]
 
 const EMPTY_LOCAL = { count: 0, index: -1, title: '', shuffle: false, playing: false }
 const EMPTY_YT = { kind: null, title: '', index: -1, count: 0, shuffle: false, playing: false, loaded: false }
@@ -53,6 +64,7 @@ export default function MusicPlayer({ started, onToast }) {
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState('')
   const [playingResultId, setPlayingResultId] = useState(null)
+  const [chip, setChip] = useState(null)
   const [volume, setVolume] = useState(() => readStored(VOLUME_KEY, 0.8))
   const [ytInfo, setYtInfo] = useState(EMPTY_YT)
   const [localInfo, setLocalInfo] = useState(EMPTY_LOCAL)
@@ -106,21 +118,39 @@ export default function MusicPlayer({ started, onToast }) {
 
   const ytReady = started && !!window.YT?.Player
 
-  const runSearch = async event => {
-    event.preventDefault()
-    const q = searchText.trim()
-    if (!q || searching) return
+  const loadResults = async (load, chipKey) => {
     setSearching(true)
     setSearchError('')
+    setChip(chipKey)
     try {
-      setResults(await searchYouTube(q))
+      setResults(await load())
     } catch {
       setResults([])
-      setSearchError('Search is not available right now. Paste a link above instead.')
+      setSearchError('YouTube is not available right now. Paste a link below instead.')
     } finally {
       setSearching(false)
     }
   }
+
+  const runSearch = event => {
+    event.preventDefault()
+    const q = searchText.trim()
+    if (!q || searching) return
+    loadResults(() => searchYouTube(q), null)
+  }
+
+  const pickChip = item => {
+    if (searching) return
+    loadResults(item.q ? () => searchYouTube(item.q) : fetchTopMusic, item.key)
+  }
+
+  // Like YouTube's home page: show videos as soon as the session starts, before any search.
+  const startGridLoaded = useRef(false)
+  useEffect(() => {
+    if (!started || startGridLoaded.current) return
+    startGridLoaded.current = true
+    loadResults(fetchTopMusic, 'trending')
+  }, [started])
 
   // Play a search result through the same path as a pasted link.
   const playResult = item => {
@@ -237,7 +267,22 @@ export default function MusicPlayer({ started, onToast }) {
               {searching ? <span className="booth-ytsearch__spin" aria-hidden="true" /> : <Icon name="search" />}
             </button>
           </form>
+          <div className="booth-ytchips" role="group" aria-label="Topics">
+            {CHIPS.map(item => (
+              <button
+                key={item.key}
+                type="button"
+                className={`booth-ytchip${chip === item.key ? ' is-on' : ''}`}
+                aria-pressed={chip === item.key}
+                onClick={() => pickChip(item)}
+                disabled={!started}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
           {searchError && <p className="booth-error" role="alert">{searchError}</p>}
+          {searching && !results.length && <p className="booth-hint">Loading videos...</p>}
           {results.length > 0 && (
             <ul className="booth-ytgrid" aria-label="YouTube results">
               {results.map(item => {
@@ -356,7 +401,7 @@ export default function MusicPlayer({ started, onToast }) {
           </form>
           {urlError && <p className="booth-error" role="alert">{urlError}</p>}
           {!ytReady && <p className="booth-hint">Start the session to load YouTube.</p>}
-          {ytReady && !ytInfo.loaded && <p className="booth-hint">Search above, or paste a link and press Load.</p>}
+          {ytReady && !ytInfo.loaded && <p className="booth-hint">Pick a video above, or paste a link and press Load.</p>}
         </div>
       ) : (
         <div role="tabpanel" id="panel-local" aria-labelledby="tab-local" className="booth-music__body">
