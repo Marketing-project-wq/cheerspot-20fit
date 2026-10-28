@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
 import AdminLogin from '../components/admin/AdminLogin.jsx'
 import ModerationDashboard from '../components/admin/ModerationDashboard.jsx'
-import { getSession, onSessionChange, signOut, staffRole } from '../lib/auth.js'
+import { getSession, handOffToDj, onSessionChange, signOut, staffRole } from '../lib/auth.js'
 import '../components/admin/admin.css'
 
 export default function Admin() {
-  const navigate = useNavigate()
   // undefined = still checking the saved session, null = signed out, object = staff session.
   const [role, setRole] = useState(undefined)
 
@@ -32,22 +30,20 @@ export default function Admin() {
   }, [])
 
   // The design sends the admin role to the DJ Booth and the superadmin role to moderation.
-  const handleLogin = nextRole => {
-    if (nextRole === 'admin') {
-      navigate('/dj')
-      return
-    }
-    setRole(nextRole)
-  }
+  // A DJ session moves to the booth's own sign-in area, so it never replaces a superadmin's.
+  useEffect(() => {
+    if (role !== 'admin') return
+    handOffToDj().finally(() => window.location.assign('/dj'))
+  }, [role])
+
+  const handleLogin = nextRole => setRole(nextRole)
 
   const handleLogout = async () => {
     await signOut()
     setRole(null)
   }
 
-  if (role === undefined) return null
-  // A DJ who is already signed in goes straight to the booth, not moderation.
-  if (role === 'admin') return <Navigate to="/dj" replace />
+  if (role === undefined || role === 'admin') return null
 
   return (
     <div className="adm-root">

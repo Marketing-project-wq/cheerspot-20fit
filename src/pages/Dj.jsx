@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import CheerBooth from '../components/dj/CheerBooth.jsx'
 import DjLogin from '../components/dj/DjLogin.jsx'
-import { getSession, onSessionChange, signOut, staffRole } from '../lib/auth.js'
+import { getSession, onSessionChange, signOut, staffRole, takeHandoff } from '../lib/auth.js'
 import '../components/admin/admin.css'
 
 // Remembers, for this tab, that staff signed in on /dj, so a refresh stays in the booth.
@@ -38,7 +38,16 @@ export default function Dj() {
   useEffect(() => {
     let alive = true
     // A broken saved session counts as signed out, so the page never stays blank.
-    getSession()
+    // A DJ who signed in on /admin arrives with a handed-over session and goes straight in.
+    takeHandoff()
+      .catch(() => false)
+      .then(handed => {
+        if (handed) {
+          writeEntered(true)
+          if (alive) setEntered(true)
+        }
+        return getSession()
+      })
       .then(session => {
         if (alive) setRole(staffRole(session))
       })

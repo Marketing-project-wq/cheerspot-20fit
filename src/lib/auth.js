@@ -26,6 +26,40 @@ export async function signIn(login, password, { remember = true } = {}) {
   return data.session
 }
 
+const HANDOFF_KEY = 'cz-dj-handoff'
+
+// A DJ who signs in on /admin belongs in the booth. The session moves to the /dj area: its tokens
+// are passed through this tab's sessionStorage, and the /admin copy is cleared from this browser only.
+export async function handOffToDj() {
+  const session = await getSession()
+  if (session) {
+    try {
+      sessionStorage.setItem(
+        HANDOFF_KEY,
+        JSON.stringify({ access_token: session.access_token, refresh_token: session.refresh_token }),
+      )
+    } catch {
+      // Storage blocked: the DJ signs in again on /dj.
+    }
+  }
+  await supabase?.auth.signOut({ scope: 'local' })
+}
+
+// On /dj: picks up a session handed over from /admin. Returns true when one was taken.
+export async function takeHandoff() {
+  let tokens = null
+  try {
+    tokens = JSON.parse(sessionStorage.getItem(HANDOFF_KEY) || 'null')
+    sessionStorage.removeItem(HANDOFF_KEY)
+  } catch {
+    tokens = null
+  }
+  if (!tokens || !supabase) return false
+  setRememberSession(false)
+  const { error } = await supabase.auth.setSession(tokens)
+  return !error
+}
+
 export async function signOut() {
   if (!supabase) return
   await supabase.auth.signOut()

@@ -3,7 +3,12 @@ import { createClient } from '@supabase/supabase-js'
 const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-const REMEMBER_KEY = 'cz-remember'
+// Staff sessions are kept per area: /dj (the booth) and everything else (/admin). A superadmin on
+// /admin and a DJ on /dj can then be signed in at the same time in one browser without replacing
+// each other. Chosen once per page load, from the URL the page opened on.
+export const AUTH_AREA = typeof window !== 'undefined' && window.location.pathname.startsWith('/dj') ? 'dj' : 'admin'
+const STORAGE_KEY = `cheerspot-auth-${AUTH_AREA}`
+const REMEMBER_KEY = `cz-remember-${AUTH_AREA}`
 
 // "Remember me" for staff sign-in. On: the session lives in localStorage and survives a restart.
 // Off: it lives in sessionStorage and ends when the browser tab closes.
@@ -43,4 +48,5 @@ const sessionStore = {
 }
 
 // createClient throws on empty values, so export null instead and let callers check.
-export const supabase = url && anonKey ? createClient(url, anonKey, { auth: { storage: sessionStore } }) : null
+export const supabase =
+  url && anonKey ? createClient(url, anonKey, { auth: { storage: sessionStore, storageKey: STORAGE_KEY } }) : null
