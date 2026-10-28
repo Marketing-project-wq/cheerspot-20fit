@@ -79,7 +79,11 @@ export default function CheerQueue({ items, queuedIds, activeId, onPlayNow, onRe
                     <strong>{item.athlete_name}</strong>
                     <span className="booth-queue__meta">{item.athlete_bib ? `Bib ${item.athlete_bib} · ` : 'From '}{item.sender_name}</span>
                   </p>
-                  <p className="booth-queue__text">{item.transcript}</p>
+                  {item.transcript ? (
+                    <p className="booth-queue__text">{item.transcript}</p>
+                  ) : (
+                    <p className="booth-queue__text is-empty">No transcript</p>
+                  )}
                   {(playing || queued) && (
                     <span className={`booth-tag${playing ? ' is-live' : ''}`}>{playing ? 'Playing' : 'Queued'}</span>
                   )}
@@ -122,7 +126,7 @@ export default function CheerQueue({ items, queuedIds, activeId, onPlayNow, onRe
       )}
 
       <section className="booth-history" aria-labelledby="booth-history-title">
-        <h3 id="booth-history-title">Sudah diputar</h3>
+        <h3 id="booth-history-title">Played</h3>
         {played.length ? (
           <ol className="booth-history__list">
             {played.map(item => (
@@ -132,6 +136,7 @@ export default function CheerQueue({ items, queuedIds, activeId, onPlayNow, onRe
                     <strong>{item.athlete_name}</strong>
                     <span className="booth-queue__meta">{item.athlete_bib ? `Bib ${item.athlete_bib} · ` : 'From '}{item.sender_name}</span>
                   </p>
+                  {item.transcript && <p className="booth-queue__text booth-history__text">{item.transcript}</p>}
                 </div>
                 <button type="button" className="booth-btn" onClick={() => onReplay(item)}>
                   Replay

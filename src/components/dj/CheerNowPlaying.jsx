@@ -4,7 +4,8 @@ export default function CheerNowPlaying({ item, label, status, countdown, onPlay
   if (!item) {
     return (
       <section className="booth-panel booth-now" aria-label="Now playing">
-        <p className="booth-empty">No approved cheers in the queue.</p>
+        <p className="booth-now__label">Cheer</p>
+        <p className="booth-empty">No approved cheers yet. Cheers appear here once the superadmin approves them.</p>
       </section>
     )
   }
@@ -23,7 +24,12 @@ export default function CheerNowPlaying({ item, label, status, countdown, onPlay
       <h2 className="booth-now__athlete">{item.athlete_name}</h2>
       {item.athlete_bib && <p className="booth-now__bib">Bib {item.athlete_bib}</p>}
       <p className="booth-now__sender">From {item.sender_name}</p>
-      {item.transcript && <blockquote className="booth-now__transcript">{item.transcript}</blockquote>}
+      {/* The DJ reads the approved cheer here, so it can be announced or followed along. */}
+      {item.transcript ? (
+        <blockquote className="booth-now__transcript">{item.transcript}</blockquote>
+      ) : (
+        <p className="booth-now__transcript is-empty">No transcript for this cheer. Listen to the audio.</p>
+      )}
 
       <div
         className="booth-progress"
@@ -42,7 +48,7 @@ export default function CheerNowPlaying({ item, label, status, countdown, onPlay
 
       <div className="booth-now__controls">
         <button type="button" className="booth-btn booth-btn--primary booth-btn--xl" onClick={onPlayPause}>
-          <Icon name={playing ? 'pause' : 'play'} size={26} />
+          <Icon name={playing ? 'pause' : 'play'} size={22} />
           {playLabel}
         </button>
         <button type="button" className="booth-btn booth-btn--xl" onClick={onSkip} disabled={!active}>

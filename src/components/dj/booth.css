@@ -134,7 +134,7 @@
    The cheer card and the queue stack on the right. Works at any browser zoom. */
 @media (min-width: 1100px) {
   .booth-grid {
-    grid-template-columns: minmax(0, 2fr) minmax(340px, 1fr);
+    grid-template-columns: minmax(0, 1.65fr) minmax(360px, 1fr);
     grid-template-rows: auto 1fr;
     grid-template-areas:
       'music now'
@@ -381,7 +381,7 @@
 
 @container (min-width: 700px) {
   .booth-ytlayout.is-watching {
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 40%);
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 42%);
     align-items: start;
   }
 
@@ -604,7 +604,7 @@
 
 .booth-now__athlete {
   margin: 0;
-  font-size: clamp(2.25rem, 4vw, 4rem);
+  font-size: clamp(2rem, 3.2vw, 3.25rem);
   font-weight: 900;
   line-height: 1;
   overflow-wrap: anywhere;
@@ -627,9 +627,16 @@
   margin: 8px 0 0;
   padding-left: 14px;
   border-left: 4px solid var(--accent);
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   line-height: 1.45;
   overflow-wrap: anywhere;
+}
+
+.booth-now__transcript.is-empty,
+.booth-queue__text.is-empty {
+  border-left-color: var(--line);
+  color: var(--muted);
+  font-style: italic;
 }
 
 .booth-progress {
@@ -656,16 +663,22 @@
 }
 
 .booth-now__controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
   margin-top: 12px;
+}
+
+.booth-now__controls .booth-btn--xl {
+  min-height: 52px;
+  padding: 0 10px;
+  font-size: 1rem;
 }
 
 .booth-countdown {
   margin: 8px 0 0;
   color: var(--muted);
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -791,6 +804,19 @@
 
 .booth-history__row .booth-queue__name {
   font-size: 1rem;
+}
+
+.booth-history__row .booth-queue__info {
+  flex: 1;
+}
+
+.booth-history__text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 0.875rem;
+  color: var(--muted);
 }
 
 /* Toast and the sound-on note */
@@ -938,7 +964,7 @@
   margin: 0;
   padding: 0 4px 0 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 20px 14px;
   max-height: 560px;
   overflow-y: auto;
@@ -1047,7 +1073,7 @@
   overflow: hidden;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.35;
 }
