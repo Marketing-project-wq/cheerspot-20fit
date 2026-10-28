@@ -1,3 +1,4 @@
+import { LOGO_ALT, LOGO_URL } from '../../lib/brand.js'
 import CheerNowPlaying from './CheerNowPlaying.jsx'
 import CheerQueue from './CheerQueue.jsx'
 import MusicPlayer from './MusicPlayer.jsx'
@@ -33,7 +34,9 @@ export default function CheerBooth({ onLogout }) {
   return (
     <div className="booth">
       <header className="booth-top">
-        <h1 className="booth-title">CheerSpot Booth</h1>
+        <h1 className="booth-title">
+          <img src={LOGO_URL} alt={`${LOGO_ALT} CheerSpot Booth`} className="booth-logo" />
+        </h1>
 
         <span className={`booth-pill booth-pill--${pill.tone}`} role="status" aria-live="polite">
           {pill.label}
