@@ -25,12 +25,14 @@ import {
 import { loadYouTubeApi } from '../../lib/youtubePlayer.js'
 import { formatTime } from './boothParts.jsx'
 import { readStored, writeStored } from './boothStorage.js'
+import { AUTO_GAP_KEY, DEFAULT_AUTO_GAP, readSetting } from '../../lib/settings.js'
 
 const MUSIC_VOLUME_KEY = 'cheerspot.booth.musicVolume'
 const CHEER_VOLUME_KEY = 'cheerspot.booth.cheerVolume'
 
-// Fixed gap between AUTO cheers. Fade timings are the defaults in ducking.js.
-const GAP_SEC = 60
+// The gap between AUTO cheers is set by the superadmin (cheerspot_settings) and read every few
+// seconds, so a change reaches an open booth without a refresh. Fade timings are in ducking.js.
+const SETTINGS_POLL_MS = 5000
 
 // Owns the booth state: queue, playback status, mode, and the AUTO scheduler.
 export default function useCheerBooth() {
@@ -48,6 +50,9 @@ export default function useCheerBooth() {
 
   const modeRef = useRef(mode)
   const nextAtRef = useRef(nextAt)
+  const gapRef = useRef(DEFAULT_AUTO_GAP)
+  // When the last cheer ended. A new gap from the admin also moves the running countdown.
+  const lastEndRef = useRef(0)
   const itemsRef = useRef(items)
   const statusRef = useRef(status)
   const toastTimer = useRef(null)
@@ -92,6 +97,26 @@ export default function useCheerBooth() {
   }, [showToast])
   useEffect(() => subscribeBooth(setStatus), [])
 
+  // Keeps the AUTO gap in step with the admin setting. A failed read keeps the last value.
+  useEffect(() => {
+    let alive = true
+    const load = () =>
+      readSetting(AUTO_GAP_KEY, DEFAULT_AUTO_GAP)
+        .then(value => {
+          const sec = Number(value)
+          if (!alive || !Number.isFinite(sec) || sec < 5 || sec > 600 || sec === gapRef.current) return
+          gapRef.current = sec
+          if (lastEndRef.current) setNextAt(lastEndRef.current + sec * 1000)
+        })
+        .catch(() => {})
+    load()
+    const timer = setInterval(load, SETTINGS_POLL_MS)
+    return () => {
+      alive = false
+      clearInterval(timer)
+    }
+  }, [])
+
 
   useEffect(() => {
     applyCheerVolume(cheerVolume)
@@ -115,7 +140,10 @@ export default function useCheerBooth() {
           })
           setLastPlayedId(item.id)
         },
-        onEnd: () => setNextAt(Date.now() + GAP_SEC * 1000),
+        onEnd: () => {
+          lastEndRef.current = Date.now()
+          setNextAt(lastEndRef.current + gapRef.current * 1000)
+        },
         onError: () => {
           failedIds.current.add(item.id)
           showToast(`Audio for ${item.athlete_name} could not load. Skipped.`)

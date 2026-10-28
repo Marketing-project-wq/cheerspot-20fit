@@ -14,6 +14,7 @@ import { keepValue, readKept, readSaved, saveValue } from './storage.js'
 import { DEFAULT_WORD_LEVELS, LEVELS, applyWordChanges, needsReview, scanWords } from './badWords.js'
 import { fetchRecentCheers, getAudioUrl, updateCheerStatus } from '../../lib/cheers.js'
 import { deleteCheer } from '../../lib/staff.js'
+import { AUTO_GAP_KEY, DEFAULT_AUTO_GAP, readSetting, saveSetting } from '../../lib/settings.js'
 
 // New cheers and status changes from the booth show up within a few seconds, without a refresh.
 const POLL_MS = 3000
@@ -358,6 +359,22 @@ export default function useModeration({ lang, liveFeed }) {
     setFocus(t.id)
   }
 
+  // Gap between AUTO cheers in the booth, stored in the database so the booth on another device follows.
+  const [autoGap, setAutoGapState] = useState(DEFAULT_AUTO_GAP)
+  useEffect(() => {
+    readSetting(AUTO_GAP_KEY, DEFAULT_AUTO_GAP)
+      .then(v => setAutoGapState(Number(v) || DEFAULT_AUTO_GAP))
+      .catch(() => {})
+  }, [])
+  const setAutoGap = sec => {
+    const before = autoGap
+    setAutoGapState(sec)
+    saveSetting(AUTO_GAP_KEY, sec).catch(() => {
+      setAutoGapState(before)
+      setToast({ id: null, prev: null, msg: pick(['Gagal menyimpan jeda. Coba lagi.', 'Could not save the gap. Try again.'], live.current.lang), color: '#BF0000' })
+    })
+  }
+
   const toggleSetting = k => {
     const v = !live.current.settings[k]
     setSettings(s => ({ ...s, [k]: v }))
@@ -515,6 +532,8 @@ export default function useModeration({ lang, liveFeed }) {
     copied,
     copyLink,
     toggleSetting,
+    autoGap,
+    setAutoGap,
     pullBack,
     removeCheer,
     requeue,

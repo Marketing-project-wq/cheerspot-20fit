@@ -25,6 +25,8 @@ const COPY = {
   logout: ['Keluar', 'Log out'],
   del: ['Hapus cheer', 'Delete cheer'],
   sentAt: ['Waktu dikirim', 'Sent at'],
+  gapTitle: ['Jeda antar cheer (AUTO)', 'Gap between cheers (AUTO)'],
+  gapSub: ['Waktu tunggu booth DJ sebelum memutar cheer berikutnya. Tersimpan untuk semua perangkat.', 'How long the DJ booth waits before the next cheer. Saved for every device.'],
   delConfirm: ['Hapus cheer dari {sender} untuk {athlete}? Voice note dan transkripnya ikut terhapus permanen.', 'Delete the cheer from {sender} for {athlete}? The voice note and transcript are removed for good.'],
   role: ['SUPER ADMIN', 'SUPER ADMIN'],
   shortcuts: ['PINTASAN', 'SHORTCUTS'],

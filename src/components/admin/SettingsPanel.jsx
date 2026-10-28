@@ -1,4 +1,5 @@
 import { pick, STRINGS, TOGGLES } from './strings.js'
+import { AUTO_GAP_CHOICES } from '../../lib/settings.js'
 
 const WORD_GROUPS = [
   { level: 'high', title: 'wordsHigh', sub: 'wordsHighSub' },
@@ -69,6 +70,29 @@ export default function SettingsPanel({ m, lang }) {
             <button type="button" className="adm-btn-dark-sm" onClick={m.addEvent}>
               {S.evAdd}
             </button>
+          </div>
+        </div>
+
+        <div className="adm-card-plain adm-card-plain--row">
+          <div className="adm-settings__text">
+            <span className="adm-settings__title">{S.gapTitle}</span>
+            <span className="adm-settings__sub">{S.gapSub}</span>
+          </div>
+          <div className="adm-seg-plain">
+            {AUTO_GAP_CHOICES.map(sec => {
+              const on = m.autoGap === sec
+              return (
+                <button
+                  key={sec}
+                  type="button"
+                  aria-pressed={on}
+                  className={`adm-seg-plain__btn${on ? ' is-on' : ''}`}
+                  onClick={() => m.setAutoGap(sec)}
+                >
+                  {sec + S.durUnit}
+                </button>
+              )
+            })}
           </div>
         </div>
 
