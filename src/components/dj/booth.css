@@ -130,17 +130,28 @@
   min-width: 0;
 }
 
+/* From 1100px: music takes about two thirds on the left, so YouTube's watch layout fits.
+   The cheer card and the queue stack on the right. Works at any browser zoom. */
 @media (min-width: 1100px) {
   .booth-grid {
-    grid-template-columns: minmax(380px, 1.2fr) minmax(0, 1.1fr) minmax(320px, 0.9fr);
+    grid-template-columns: minmax(0, 2fr) minmax(340px, 1fr);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'music now'
+      'music queue';
     align-items: start;
   }
-}
 
-/* Wide screens: the music panel takes about half the width, so YouTube's watch layout fits. */
-@media (min-width: 1440px) {
-  .booth-grid {
-    grid-template-columns: minmax(0, 1.9fr) minmax(320px, 1fr) minmax(320px, 1fr);
+  .booth-music {
+    grid-area: music;
+  }
+
+  .booth-now {
+    grid-area: now;
+  }
+
+  .booth-queue-panel {
+    grid-area: queue;
   }
 }
 
@@ -315,7 +326,7 @@
   order: -1;
 }
 
-@container (min-width: 760px) {
+@container (min-width: 700px) {
   .booth-ytlayout.is-watching {
     grid-template-columns: minmax(0, 1fr) minmax(280px, 40%);
     align-items: start;
@@ -526,7 +537,7 @@
 
 .booth-now__athlete {
   margin: 0;
-  font-size: clamp(2.5rem, 7vw, 5rem);
+  font-size: clamp(2.25rem, 4vw, 4rem);
   font-weight: 900;
   line-height: 1;
   overflow-wrap: anywhere;
