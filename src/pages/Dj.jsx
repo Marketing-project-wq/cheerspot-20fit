@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import AdminLogin from '../components/admin/AdminLogin.jsx'
 import CheerBooth from '../components/dj/CheerBooth.jsx'
+import DjLogin from '../components/dj/DjLogin.jsx'
 import { getSession, onSessionChange, signOut, staffRole } from '../lib/auth.js'
 import '../components/admin/admin.css'
 
@@ -30,11 +30,11 @@ export default function Dj() {
   }
 
   if (role === undefined) return null
-  // The booth asks for its own staff login. DJ (admin) and superadmin accounts both work.
+  // The booth has its own landing and sign-in page. DJ (admin) and superadmin accounts both work.
   if (!role) {
     return (
       <div className="adm-root">
-        <AdminLogin onSuccess={setRole} />
+        <DjLogin onSuccess={setRole} />
       </div>
     )
   }

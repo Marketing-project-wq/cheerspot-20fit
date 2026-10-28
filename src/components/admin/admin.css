@@ -114,6 +114,105 @@
 }
 
 /* Login */
+/* DJ Booth landing beside the login form (stacks above it on small screens). */
+.dj-hero {
+  flex: 1 1 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  padding: clamp(24px, 5vw, 64px) clamp(16px, 5vw, 64px);
+  background:
+    radial-gradient(80% 60% at 0% 100%, rgba(220, 38, 38, 0.28), rgba(220, 38, 38, 0) 70%),
+    #0f0f0f;
+  border-bottom: 1px solid #222220;
+}
+.dj-hero__eyebrow {
+  margin: 0;
+  color: #f87171;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.dj-hero__headline {
+  margin: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: clamp(44px, 6vw, 84px);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+.dj-hero__headline span {
+  color: #dc2626;
+}
+.dj-hero__lead {
+  margin: 0;
+  max-width: 520px;
+  color: #c9c9c2;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.dj-hero__list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 520px;
+}
+.dj-hero__list li {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  color: #a3a39b;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.dj-hero__list strong {
+  display: block;
+  color: #f4f4ef;
+  font-size: 15px;
+}
+.dj-hero__num {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dc2626;
+  border-radius: 10px;
+  color: #f87171;
+  font-weight: 800;
+  font-size: 13px;
+}
+.dj-hero__help {
+  margin: 8px 0 0;
+  color: #77776f;
+  font-size: 13px;
+}
+/* Phones: keep the form close to the top; the feature list only shows on wider screens. */
+@media (max-width: 899px) {
+  .dj-hero__list,
+  .dj-hero__help {
+    display: none;
+  }
+}
+@media (min-width: 900px) {
+  .dj-hero {
+    flex: 1 1 55%;
+    min-height: 100dvh;
+    border-bottom: 0;
+    border-right: 1px solid #222220;
+  }
+  .adm-login--hero .adm-login__panel {
+    flex: 1 1 45%;
+  }
+}
+
 .adm-login {
   min-height: 100dvh;
   background: #0a0a0a;
