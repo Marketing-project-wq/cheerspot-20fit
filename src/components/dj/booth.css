@@ -810,6 +810,28 @@
   flex: 1;
 }
 
+.booth-history__actions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
+
+.booth-del {
+  margin-left: auto;
+  font-size: 1.375rem;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.booth-history__actions .booth-del {
+  margin-left: 0;
+}
+
+.booth-del:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
 .booth-history__text {
   display: -webkit-box;
   overflow: hidden;

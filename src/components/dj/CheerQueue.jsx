@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Icon } from './boothParts.jsx'
 
 // Presentational only. The booth hook passes the items and handlers in.
-export default function CheerQueue({ items, queuedIds, activeId, onPlayNow, onReplay, onMoveUp, onMoveDown, onReorder }) {
+export default function CheerQueue({ items, queuedIds, activeId, onPlayNow, onReplay, onMoveUp, onMoveDown, onReorder, onDelete }) {
   const [dragId, setDragId] = useState(null)
   const [overId, setOverId] = useState(null)
 
@@ -116,6 +116,16 @@ export default function CheerQueue({ items, queuedIds, activeId, onPlayNow, onRe
                   >
                     Play now
                   </button>
+                  <button
+                    type="button"
+                    className="booth-btn booth-btn--icon booth-del"
+                    onClick={() => onDelete(item)}
+                    disabled={queued || playing}
+                    aria-label={`Delete the cheer for ${item.athlete_name}`}
+                    title="Delete cheer"
+                  >
+                    ×
+                  </button>
                 </div>
               </li>
             )
@@ -138,9 +148,21 @@ export default function CheerQueue({ items, queuedIds, activeId, onPlayNow, onRe
                   </p>
                   {item.transcript && <p className="booth-queue__text booth-history__text">{item.transcript}</p>}
                 </div>
-                <button type="button" className="booth-btn" onClick={() => onReplay(item)}>
-                  Replay
-                </button>
+                <div className="booth-history__actions">
+                  <button type="button" className="booth-btn" onClick={() => onReplay(item)} disabled={item.id === activeId}>
+                    Replay
+                  </button>
+                  <button
+                    type="button"
+                    className="booth-btn booth-btn--icon booth-del"
+                    onClick={() => onDelete(item)}
+                    disabled={item.id === activeId}
+                    aria-label={`Delete the cheer for ${item.athlete_name}`}
+                    title="Delete cheer"
+                  >
+                    ×
+                  </button>
+                </div>
               </li>
             ))}
           </ol>

@@ -29,6 +29,7 @@ export default function CheerBooth({ onLogout }) {
     moveUp,
     moveDown,
     reorder,
+    deleteItem,
   } = booth
 
   return (
@@ -97,6 +98,7 @@ export default function CheerBooth({ onLogout }) {
             onMoveUp={moveUp}
             onMoveDown={moveDown}
             onReorder={reorder}
+            onDelete={deleteItem}
           />
         </main>
       </div>

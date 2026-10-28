@@ -1,8 +1,9 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
-// Superadmin tools for CheerSpot: DJ accounts (managed from the dashboard) and deleting a cheer.
-// Both need the service role, so this runs on the server. The auth project is shared with other 20FIT systems:
-// accounts made here carry app_metadata.cheerspot = true, and list, reset and remove only touch those.
+// Staff tools for CheerSpot: DJ accounts (superadmin only) and deleting a cheer (superadmin any cheer,
+// DJ only cheers the booth shows: approved or played). Both need the service role, so this runs on
+// the server. The auth project is shared with other 20FIT systems: accounts made here carry
+// app_metadata.cheerspot = true, and list, reset and remove only touch those.
 const MIN_PASSWORD = 8
 // DJs sign in with a username; Supabase stores it as username@DJ_EMAIL_DOMAIN (our own domain, no mail
 // is sent). Must match src/lib/auth.js.
@@ -36,10 +37,12 @@ async function handle(req: Request): Promise<Response> {
     auth: { persistSession: false, autoRefreshToken: false },
   })
   const { data: caller, error: callerError } = await admin.auth.getUser(token)
-  if (callerError || caller?.user?.app_metadata?.role !== 'superadmin') return fail(403, 'Superadmin only')
+  const role = callerError ? null : caller?.user?.app_metadata?.role
+  if (role !== 'superadmin' && role !== 'admin') return fail(403, 'Staff only')
 
   const input = await req.json().catch(() => ({}))
   const action = input?.action
+  if (role !== 'superadmin' && action !== 'delete_cheer') return fail(403, 'Superadmin only')
 
   if (action === 'list') {
     const accounts = await listDjAccounts(admin)
@@ -84,12 +87,14 @@ async function handle(req: Request): Promise<Response> {
     return Response.json({ ok: true })
   }
 
-  // Removes a cheer for good: its audio file, then its row. Superadmin only, like everything here.
+  // Removes a cheer for good: its audio file, then its row. A DJ may only remove cheers the booth
+  // shows (approved or played), never pending or rejected ones that are still the superadmin's call.
   if (action === 'delete_cheer') {
     const id = typeof input.id === 'string' ? input.id : ''
-    const { data: row, error: rowError } = await admin.from('cheerspot_cheers').select('id, audio_path').eq('id', id).maybeSingle()
+    const { data: row, error: rowError } = await admin.from('cheerspot_cheers').select('id, audio_path, status').eq('id', id).maybeSingle()
     if (rowError) return fail(502, 'delete_failed')
     if (!row) return fail(404, 'not_found')
+    if (role !== 'superadmin' && row.status !== 'approved' && row.status !== 'played') return fail(403, 'Not allowed')
     if (row.audio_path) {
       const { error: fileError } = await admin.storage.from('cheerspot-audio').remove([row.audio_path])
       if (fileError) return fail(502, 'delete_failed')

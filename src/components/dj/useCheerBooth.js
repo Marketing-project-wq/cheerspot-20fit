@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getQueue, markPlayed, moveDown, moveUp, setOrder, subscribe as subscribeQueue } from '../../lib/cheerQueue.js'
+import {
+  getQueue,
+  markPlayed,
+  moveDown,
+  moveUp,
+  removeCheer,
+  setOrder,
+  subscribe as subscribeQueue,
+} from '../../lib/cheerQueue.js'
 import {
   getBoothStatus,
   pauseCheer,
@@ -218,6 +226,12 @@ export default function useCheerBooth() {
     if (focusItem) playItem(focusItem)
   }
 
+  // Deleting asks first: the voice note is removed for good, also for the superadmin.
+  const deleteItem = item => {
+    if (!window.confirm(`Delete the cheer for ${item.athlete_name} from ${item.sender_name}? The voice note is removed for good.`)) return
+    removeCheer(item.id).catch(() => showToast(`Could not delete the cheer for ${item.athlete_name}. Try again.`))
+  }
+
   const replayFocus = () => {
     if (!focusItem) return
     if (status.cheerId === focusItem.id) restartCheer()
@@ -245,6 +259,7 @@ export default function useCheerBooth() {
     togglePlayPause,
     replayFocus,
     skip: skipCheer,
+    deleteItem,
     moveUp,
     moveDown,
     reorder: setOrder,

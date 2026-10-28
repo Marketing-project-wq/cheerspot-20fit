@@ -2,6 +2,7 @@
 // Reads approved and played cheers from Supabase. The table is not in the realtime publication,
 // so the queue polls while the booth is open. The operator's order lives in memory only.
 import { getAudioUrl } from './cheers.js'
+import { deleteCheer } from './staff.js'
 import { supabase } from './supabase.js'
 
 const POLL_MS = 3000
@@ -16,6 +17,8 @@ let order = []
 const playedPending = new Set()
 // When each cheer was played in this booth session. Only orders the played list; never forces a status.
 const playedAt = new Map()
+// Cheers deleted from the booth. Polls leave them out, so they never flash back.
+const deleted = new Set()
 const listeners = new Set()
 const errorListeners = new Set()
 let timer = null
@@ -69,7 +72,7 @@ async function fetchCheers() {
   if (approvedRes.error) throw approvedRes.error
   if (playedRes.error) throw playedRes.error
   const rows = [...approvedRes.data, ...playedRes.data.filter(row => !approvedRes.data.some(a => a.id === row.id))]
-  return rows.map(toItem)
+  return rows.filter(row => !deleted.has(row.id)).map(toItem)
 }
 
 // Fetches now. Overlapping calls share one request. Errors go to the error listeners.
@@ -132,6 +135,21 @@ export async function markPlayed(id) {
     // Not saved: follow the server again, which still has it approved.
     playedPending.delete(id)
     throw error
+  }
+}
+
+// Deletes a cheer and its voice note for good. It leaves the booth right away and comes back only
+// if the delete fails (the promise then rejects).
+export async function removeCheer(id) {
+  deleted.add(id)
+  items = items.filter(item => item.id !== id)
+  emit()
+  try {
+    await deleteCheer(id)
+  } catch (err) {
+    deleted.delete(id)
+    refresh()
+    throw err
   }
 }
 

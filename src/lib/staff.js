@@ -20,5 +20,5 @@ export const createDjAccount = ({ name, username, password }) => call({ action: 
 export const resetDjPassword = (id, password) => call({ action: 'reset', id, password })
 export const removeDjAccount = id => call({ action: 'remove', id })
 
-// Deletes a cheer and its voice note for good.
+// Deletes a cheer and its voice note for good. Superadmin: any cheer; DJ: approved or played ones.
 export const deleteCheer = id => call({ action: 'delete_cheer', id })
