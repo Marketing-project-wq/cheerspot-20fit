@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { COPY, SUCCESS_VARIANTS } from './copy.js'
 import { ButtonMicIcon, VariantIcon } from './icons.jsx'
+import { LOGO_URL } from '../../lib/brand.js'
 
 const FX_COLORS = ['#BF0000', '#FFFFFF', '#FF4545', '#FFFFFF', '#BF0000']
 
@@ -40,7 +41,7 @@ export default function SuccessScreen({ lang, athlete, onAgain }) {
   return (
     <div className="cz-app">
       <div className="cz-success-top">
-        <img src="/assets/hero.png" alt={COPY.ariaLogo[lang]} className="cz-logo" style={{ height: 24 }} />
+        <img src={LOGO_URL} alt={COPY.ariaLogo[lang]} className="cz-logo" style={{ height: 24 }} />
       </div>
 
       <div className="cz-s-visual">

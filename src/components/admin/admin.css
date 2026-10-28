@@ -94,34 +94,23 @@
   color: #0a0a0a;
 }
 .adm-logo {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 800;
-  text-transform: uppercase;
-  line-height: 1;
-  color: #f4f4ef;
-  white-space: nowrap;
-  font-size: 30px;
-}
-.adm-logo__num {
-  color: #ffffff;
-}
-.adm-logo__event {
-  color: #ff4545;
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: 32px;
+  object-fit: contain;
 }
 .adm-logo--login {
-  font-size: 26px;
+  height: 32px;
 }
 .adm-logo--side {
-  font-size: 30px;
+  height: 34px;
 }
 .adm-logo--side-wide {
-  font-size: 40px;
+  height: 44px;
 }
 .adm-logo--qr {
-  font-size: 44px;
+  height: 52px;
 }
 
 /* Login */

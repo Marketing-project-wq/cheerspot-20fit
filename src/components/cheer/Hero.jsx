@@ -1,9 +1,10 @@
 import { COPY, TICKER_WORDS } from './copy.js'
+import { LOGO_URL } from '../../lib/brand.js'
 
 export function Header({ lang }) {
   return (
     <div className="cz-header">
-      <img src="/assets/hero.png" alt={COPY.ariaLogo[lang]} className="cz-logo" />
+      <img src={LOGO_URL} alt={COPY.ariaLogo[lang]} className="cz-logo" />
       <div className="cz-live">
         <span className="cz-live-dot" />
         {COPY.liveAt[lang]}

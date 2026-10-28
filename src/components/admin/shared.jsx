@@ -1,13 +1,8 @@
 // Brand mark and language switch shared by the login and dashboard.
+import { LOGO_ALT, LOGO_URL } from '../../lib/brand.js'
 
-// TODO(asset): the design points at an uploaded logo image that is not in this repo; swap in the real file.
 export function Logo({ className = '' }) {
-  return (
-    <span className={`adm-logo ${className}`} role="img" aria-label="20FIT Event">
-      <span className="adm-logo__num">20FIT</span>
-      <span className="adm-logo__event">Event</span>
-    </span>
-  )
+  return <img src={LOGO_URL} alt={LOGO_ALT} className={`adm-logo ${className}`} />
 }
 
 export function LangSwitch({ lang, onChange }) {

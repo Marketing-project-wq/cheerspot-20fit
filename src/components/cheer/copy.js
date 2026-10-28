@@ -38,7 +38,7 @@ export const COPY = {
   ariaRecord: { id: 'Mulai rekam', en: 'Start recording' },
   ariaStop: { id: 'Stop rekam', en: 'Stop recording' },
   ariaPlay: { id: 'Putar rekaman', en: 'Play recording' },
-  ariaLogo: { id: '20FIT Event', en: '20FIT Event' },
+  ariaLogo: { id: '20FIT Race Lab', en: '20FIT Race Lab' },
 }
 
 export const PLATFORM_LABEL = {
