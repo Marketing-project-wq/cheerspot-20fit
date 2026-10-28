@@ -4,7 +4,7 @@
 import { getAudioUrl } from './cheers.js'
 import { supabase } from './supabase.js'
 
-const POLL_MS = 5000
+const POLL_MS = 3000
 const HISTORY_LIMIT = 20
 const COLUMNS = 'id, created_at, sender_name, athlete_name, duration_sec, audio_path, status, transcript'
 

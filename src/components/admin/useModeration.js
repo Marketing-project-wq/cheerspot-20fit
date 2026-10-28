@@ -15,7 +15,9 @@ import {
 import { readSaved, saveValue } from './storage.js'
 import { fetchRecentCheers, getAudioUrl, updateCheerStatus } from '../../lib/cheers.js'
 
-const POLL_MS = 15000
+// New cheers and status changes from the booth show up within a few seconds, without a refresh.
+const POLL_MS = 3000
+const NEW_MARK_MS = 9000
 
 // Turns a cheerspot_cheers row into the shape the moderation UI uses.
 const fromRow = row => ({
@@ -64,27 +66,58 @@ export default function useModeration({ lang, liveFeed }) {
     saveValue('cz-admin-page', page)
   }, [page])
 
-  // Pull all cheers from Supabase. Local status changes win over the server copy
-  // until approve and reject are saved to the database.
+  // Status writes still in flight. Until one settles, a poll keeps the local status, not the server's.
+  const saving = useRef(new Map())
+  const saveStatus = (id, status, reason = null) => {
+    saving.current.set(id, (saving.current.get(id) || 0) + 1)
+    return updateCheerStatus(id, status, reason).finally(() => {
+      const left = saving.current.get(id) - 1
+      if (left > 0) saving.current.set(id, left)
+      else saving.current.delete(id)
+    })
+  }
+
+  // Pull all cheers from Supabase every few seconds and when the tab comes back into view.
+  // The server copy wins, except for cheers with a status write in flight. Cheers that were not
+  // on screen before are marked new for a few seconds.
+  const loadedOnce = useRef(false)
   useEffect(() => {
     let alive = true
     const load = async () => {
       const rows = await fetchRecentCheers()
       if (!alive || !rows) return
+      const known = new Set(live.current.items.map(x => x.id))
+      const arrived = loadedOnce.current ? rows.filter(row => !known.has(row.id)).map(row => row.id) : []
+      loadedOnce.current = true
       setItems(prev => {
         const local = new Map(prev.map(x => [x.id, x]))
         return rows.map(row => {
           const item = fromRow(row)
           const kept = local.get(item.id)
-          return kept ? { ...item, status: kept.status, reason: kept.reason, playedAt: kept.playedAt } : item
+          if (!kept) return arrived.includes(item.id) ? { ...item, isNew: true } : item
+          const merged = { ...item, isNew: kept.isNew, playedAt: kept.playedAt, autoApproved: kept.autoApproved }
+          return saving.current.has(item.id) ? { ...merged, status: kept.status, reason: kept.reason } : merged
         })
       })
+      arrived.forEach(id => later(() => patch(id, { isNew: false }), NEW_MARK_MS))
+      const { settings: st, words: w } = live.current
+      if (st.autoApprove) {
+        rows
+          .filter(row => row.status === 'pending' && row.transcript && !saving.current.has(row.id))
+          .filter(row => scanText(row.transcript, w).hits.length === 0)
+          .forEach(row => autoApprove(row.id))
+      }
     }
     load()
     const t = setInterval(load, POLL_MS)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load()
+    }
+    document.addEventListener('visibilitychange', onVisible)
     return () => {
       alive = false
       clearInterval(t)
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [])
   const [tab, setTab] = useState('pending')
@@ -132,15 +165,17 @@ export default function useModeration({ lang, liveFeed }) {
     )
   }
 
+  // Auto-approve is saved like a manual Yes; a failed save puts the cheer back to pending.
+  const autoApprove = id => {
+    patch(id, { status: 'approved', autoApproved: true })
+    saveStatus(id, 'approved').catch(() => patch(id, { status: 'pending', autoApproved: false }))
+  }
+
   const applyAuto = () => {
     const w = live.current.words
-    setItems(prev =>
-      prev.map(x =>
-        x.status === 'pending' && !x.transcribing && scanText(x.text, w).hits.length === 0
-          ? { ...x, status: 'approved', autoApproved: true }
-          : x,
-      ),
-    )
+    live.current.items
+      .filter(x => x.status === 'pending' && !x.transcribing && x.text && scanText(x.text, w).hits.length === 0)
+      .forEach(x => autoApprove(x.id))
   }
 
   // TODO(supabase): replace the mock feed with a realtime subscription to incoming cheers.
@@ -241,7 +276,7 @@ export default function useModeration({ lang, liveFeed }) {
     const nxt = vis[i + 1] || vis[i - 1]
     if (L.playId === id) stopPlay()
     patch(id, { status, reason: reason || null })
-    updateCheerStatus(id, status, reason || null).catch(() => {
+    saveStatus(id, status, reason || null).catch(() => {
       patch(id, { status: 'pending', reason: null })
       setToast({ id, prev: 'pending', msg: pick(['Gagal menyimpan. Coba lagi.', 'Could not save. Try again.'], L.lang), color: '#BF0000' })
     })
@@ -262,7 +297,7 @@ export default function useModeration({ lang, liveFeed }) {
     const t = live.current.toast
     if (!t) return
     patch(t.id, { status: t.prev, reason: null })
-    updateCheerStatus(t.id, t.prev, null).catch(() => {})
+    saveStatus(t.id, t.prev).catch(() => {})
     setToast(null)
     setFocus(t.id)
   }
