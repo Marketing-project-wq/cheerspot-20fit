@@ -7,9 +7,8 @@ import { LangSwitch, Logo } from './shared.jsx'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-// copy overrides the heading strings ({ title, sub } per language). hero(lang) renders an optional
-// landing panel beside the form, used by the DJ Booth login.
-export default function AdminLogin({ onSuccess, copy, hero }) {
+// copy overrides the heading strings ({ title, sub } per language), used by the DJ Booth login.
+export default function AdminLogin({ onSuccess, copy }) {
   const { lang, setLang } = useT()
   const S = { ...(STRINGS[lang] || STRINGS.id), ...(copy?.[lang] || copy?.id) }
   const [email, setEmail] = useState('')
@@ -51,8 +50,7 @@ export default function AdminLogin({ onSuccess, copy, hero }) {
   const inputErr = err ? ' is-error' : ''
 
   return (
-    <main className={`adm-login${hero ? ' adm-login--hero' : ''}`}>
-      {hero?.(lang)}
+    <main className="adm-login">
       <div className="adm-login__panel">
         <div className="adm-login__top">
           <Logo className="adm-logo--login" />
