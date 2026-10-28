@@ -1,5 +1,5 @@
-// Audio engine for the booth: one shared AudioContext, the cheer chain, local-file music,
-// and the ducking state machine. Music sources (YouTube, local files) register an adapter with
+// Audio engine for the booth: one shared AudioContext, the cheer chain, and the ducking state
+// machine. The music source (YouTube) registers an adapter with
 // { isPlaying(), getLevel(), setLevel(v), rampTo(v, ms) }. Levels are 0..1.
 
 export const DEFAULT_DUCKING = {
@@ -15,7 +15,6 @@ const CHEER_OVERLAP = 0.6
 // Short fades on the cheer itself, so start, pause and skip never click.
 const CHEER_FADE_IN_S = 0.06
 const CHEER_FADE_OUT_S = 0.12
-const CURVE_POINTS = 64
 
 let ctx = null
 let cheerInput = null
@@ -85,7 +84,7 @@ export function setMusicVolume(value) {
   applyLevels()
 }
 
-// Register a music adapter under a name ('youtube' or 'local'). Pass null to remove it.
+// Register a music adapter under a name ('youtube'). Pass null to remove it.
 export function registerMusicSource(name, adapter) {
   sources[name] = adapter || null
   applyLevels()
@@ -133,151 +132,6 @@ export function subscribeBooth(callback) {
 
 export function getBoothStatus() {
   return current
-}
-
-// Local-file music. Owns its own <audio> element, routed through a GainNode the ducker controls.
-export function createLocalMusic({ onChange, onError }) {
-  const context = getAudioContext()
-  const element = new Audio()
-  element.preload = 'auto'
-  const source = context.createMediaElementSource(element)
-  const gain = context.createGain()
-  source.connect(gain)
-  gain.connect(context.destination)
-
-  let tracks = []
-  let order = []
-  let position = -1
-  let shuffle = false
-  let cancelRamp = null
-
-  const info = () => ({
-    count: tracks.length,
-    index: position,
-    title: position >= 0 ? trackTitle(tracks[order[position]]) : '',
-    shuffle,
-    playing: !element.paused && !element.ended,
-  })
-  const notify = () => onChange?.(info())
-
-  function trackTitle(track) {
-    return track.name.replace(/\.[^.]+$/, '')
-  }
-
-  function buildOrder() {
-    const indexes = tracks.map((_, i) => i)
-    if (!shuffle) return indexes
-    const playingTrack = position >= 0 ? order[position] : null
-    const rest = shuffleArray(indexes.filter(i => i !== playingTrack))
-    return playingTrack === null ? rest : [playingTrack, ...rest]
-  }
-
-  function loadPosition(next) {
-    position = next
-    element.src = tracks[order[position]].url
-  }
-
-  async function play() {
-    if (!tracks.length) return
-    if (position < 0) loadPosition(0)
-    try {
-      await element.play()
-    } catch (err) {
-      onError?.(err)
-    }
-    notify()
-  }
-
-  function pause() {
-    element.pause()
-    notify()
-  }
-
-  // Moves to the next or previous track. Going past the last track stops playback.
-  function step(delta) {
-    if (!tracks.length) return
-    const next = position + delta
-    if (next < 0 || next >= tracks.length) {
-      element.pause()
-      position = -1
-      element.removeAttribute('src')
-      notify()
-      return
-    }
-    loadPosition(next)
-    play()
-  }
-
-  element.addEventListener('ended', () => step(1))
-  element.addEventListener('error', () => {
-    onError?.(new Error('Track could not be played'))
-    step(1)
-  })
-  element.addEventListener('play', notify)
-  element.addEventListener('pause', notify)
-
-  const adapter = {
-    isPlaying: () => !element.paused && !element.ended && !!element.src,
-    getLevel: () => gain.gain.value,
-    setLevel(value) {
-      cancelRamp?.()
-      gain.gain.cancelScheduledValues(context.currentTime)
-      gain.gain.setValueAtTime(clamp01(value), context.currentTime)
-    },
-    rampTo(value, ms) {
-      cancelRamp?.()
-      const now = context.currentTime
-      const from = gain.gain.value
-      // Hold the current level, then run the curve just after it (a curve may not overlap another event).
-      gain.gain.cancelScheduledValues(now)
-      gain.gain.setValueAtTime(from, now)
-      gain.gain.setValueCurveAtTime(easedCurve(from, clamp01(value)), now + 0.01, Math.max(ms, 1) / 1000)
-      return new Promise(resolve => {
-        const timer = setTimeout(finish, ms)
-        function finish() {
-          clearTimeout(timer)
-          if (cancelRamp === finish) cancelRamp = null
-          resolve()
-        }
-        cancelRamp = finish
-      })
-    },
-  }
-
-  return {
-    adapter,
-    setFiles(files) {
-      element.pause()
-      tracks.forEach(track => URL.revokeObjectURL(track.url))
-      tracks = files.map(file => ({ name: file.name, url: URL.createObjectURL(file) }))
-      shuffle = false
-      order = buildOrder()
-      position = -1
-      element.removeAttribute('src')
-      notify()
-    },
-    play,
-    pause,
-    next: () => step(1),
-    previous: () => step(-1),
-    toggleShuffle() {
-      // The playing track keeps playing; only its place in the order changes.
-      const playingTrack = position >= 0 ? order[position] : -1
-      shuffle = !shuffle
-      order = buildOrder()
-      position = playingTrack >= 0 ? order.indexOf(playingTrack) : -1
-      notify()
-    },
-    info,
-    destroy() {
-      cancelRamp?.()
-      element.pause()
-      element.removeAttribute('src')
-      source.disconnect()
-      gain.disconnect()
-      tracks.forEach(track => URL.revokeObjectURL(track.url))
-    },
-  }
 }
 
 // ---- internal: levels ----
@@ -514,26 +368,11 @@ function emit() {
   subscribers.forEach(callback => callback(current))
 }
 
-// Smoothstep: starts and ends gently, so a fade has no audible corner. Shared with the YouTube fade.
+// Smoothstep: starts and ends gently, so a fade has no audible corner. Used by the YouTube fade.
 export function ease(t) {
   return t * t * (3 - 2 * t)
 }
 
-function easedCurve(from, to) {
-  const curve = new Float32Array(CURVE_POINTS)
-  for (let i = 0; i < CURVE_POINTS; i += 1) curve[i] = from + (to - from) * ease(i / (CURVE_POINTS - 1))
-  return curve
-}
-
 function clamp01(value) {
   return Math.min(1, Math.max(0, Number(value) || 0))
-}
-
-function shuffleArray(list) {
-  const copy = [...list]
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[copy[i], copy[j]] = [copy[j], copy[i]]
-  }
-  return copy
 }

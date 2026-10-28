@@ -241,33 +241,6 @@
 }
 
 /* Music panel */
-.booth-tabs {
-  display: flex;
-  gap: 8px;
-  padding: 4px;
-  border-radius: 14px;
-  background: #0f0f0f;
-}
-
-.booth-tab {
-  flex: 1 1 0;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.booth-tab[aria-selected='true'] {
-  background: var(--panel-2);
-  color: var(--text);
-  box-shadow: inset 0 -3px 0 var(--accent);
-}
-
 /* The YouTube iframe stays in the DOM. Hidden until a link loads; YouTube refuses to play
    in a hidden or tiny player, so once loaded it shows as a 16:9 video (at least 200px tall). */
 .booth-yt-host {
@@ -436,21 +409,6 @@
   color: var(--text);
   font: inherit;
   font-size: 16px;
-}
-
-.booth-file {
-  position: relative;
-  overflow: hidden;
-  align-self: flex-start;
-}
-
-.booth-file__input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
 }
 
 .booth-transport {
