@@ -41,7 +41,10 @@
 }
 
 .booth-top {
-  --top-h: 46px;
+  /* Header controls: one height, and one width per button, so the row lines up. */
+  --top-h: 44px;
+  --top-w: 112px;
+  --top-fs: 15px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -65,12 +68,13 @@
   gap: 10px;
   height: var(--top-h);
   /* Fits the longest label ("Cheer playing"), so the row does not shift as the status changes. */
-  min-width: 164px;
-  padding: 0 16px;
+  width: 160px;
+  padding: 0 14px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel-2);
   color: var(--text);
+  font-size: var(--top-fs);
   font-weight: 800;
   white-space: nowrap;
 }
@@ -110,13 +114,14 @@
 }
 
 .booth-mode button {
-  min-width: 96px;
+  width: var(--top-w);
   height: 100%;
-  padding: 0 16px;
+  padding: 0;
   border: 0;
   background: var(--panel-2);
   color: var(--muted);
   font: inherit;
+  font-size: var(--top-fs);
   font-weight: 800;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -142,7 +147,11 @@
 
 .booth-logout {
   flex: none;
+  width: var(--top-w);
   height: var(--top-h);
+  min-height: 0;
+  padding: 0;
+  font-size: var(--top-fs);
   font-weight: 800;
 }
 
@@ -962,7 +971,14 @@
 }
 
 @media (max-width: 480px) {
+  /* Phone: status and Log out share a row, the mode switch takes the full row below. */
+  .booth-pill {
+    flex: 1 1 auto;
+    width: auto;
+  }
+
   .booth-mode {
+    order: 1;
     flex: 1 1 100%;
   }
 
