@@ -23,6 +23,8 @@ const LIVE_POLL_MS = 15000
 const POLL_MS = 3000
 // While a cheer waits for its transcript and Realtime is down, poll faster so the text shows soon.
 const FAST_POLL_MS = 1000
+// Shared settings (gap, words, events) are re-read this often while Realtime is down.
+const SHARED_POLL_MS = 6000
 const NEW_MARK_MS = 9000
 // Transcription runs right after a cheer is sent. Without a transcript after this long it most
 // likely failed; the cheer can then be judged by listening.
@@ -173,9 +175,15 @@ export default function useModeration({ lang, liveFeed }) {
     let t = null
     // tick restarts the loop. Only the latest call schedules the next one, so restarts never stack.
     let loop = 0
+    // While Realtime is down, settings changed on another device are picked up by the poll too.
+    let sharedAt = Date.now()
     const tick = async () => {
       clearTimeout(t)
       const mine = ++loop
+      if (!isLive && Date.now() - sharedAt >= SHARED_POLL_MS) {
+        sharedAt = Date.now()
+        loadShared()
+      }
       await load().catch(() => {})
       if (!alive || mine !== loop) return
       const waiting = live.current.items?.some(x => x.transcribing)
@@ -399,108 +407,114 @@ export default function useModeration({ lang, liveFeed }) {
 
   // Gap between AUTO cheers in the booth, stored in the database so the booth on another device follows.
   const [autoGap, setAutoGapState] = useState(DEFAULT_AUTO_GAP)
-  // Word list saves in flight, and when the list was last changed here. Like status writes: a read
-  // sent before a change must not undo it.
-  const wordSaving = useRef(0)
-  const wordChangedAt = useRef(0)
+  // Shared settings in cheerspot_settings: the AUTO gap, the word list and the events. Saves run one
+  // after another, so they reach the database in the order they were made. While a save of a kind is
+  // pending, reads of that kind are ignored; once the last one settles (saved or failed), that kind
+  // is read again, so the screen always ends on what the database holds.
+  const shared = useRef({ gap: { pending: 0, version: 0 }, words: { pending: 0, version: 0 }, events: { pending: 0, version: 0 } })
+  const saveQueue = useRef(Promise.resolve())
   const wordsSynced = useRef(false)
-  const eventSaving = useRef(0)
-  const eventChangedAt = useRef(0)
-  // Reads the shared settings (gap and word list). Runs on open and whenever Realtime reports a change.
-  const loadShared = () => {
-    readSetting(AUTO_GAP_KEY, DEFAULT_AUTO_GAP)
-      .then(v => setAutoGapState(Number(v) || DEFAULT_AUTO_GAP))
-      .catch(() => {})
-    const sentAt = Date.now()
-    readSetting(BAD_WORDS_KEY, null)
-      .then(saved => {
-        if (wordSaving.current || wordChangedAt.current >= sentAt) return
-        const first = !wordsSynced.current
-        wordsSynced.current = true
-        if (isWordChanges(saved)) {
-          setWordChanges(saved)
-          return
-        }
-        // No shared list yet: the first admin to open this version carries over this browser's changes.
-        const local = live.current.wordChanges
-        if (first && local && Object.keys(local).length) commitWords(local, null)
-      })
-      .catch(() => {})
-    readSetting(EVENTS_KEY, null)
-      .then(saved => {
-        if (eventSaving.current || eventChangedAt.current >= sentAt) return
-        // Events this browser kept before they were shared (read once, then never again here), so
-        // an event added on this device before the move is not lost.
-        let local = []
-        if (!readKept(EVENTS_SYNCED_KEY, false)) {
-          const kept = readKept('cz-admin-events', null)
-          local = Array.isArray(kept) ? kept.filter(e => typeof e === 'string' && e.trim()) : []
-        }
-        const shared = isEventsValue(saved) ? saved : null
-        const list = [...(shared ? shared.list : []), ...local.filter(e => !shared?.list.includes(e))]
-        const active = shared ? shared.active : readKept('cz-admin-event', '') || ''
-        const next = { list, active: list.includes(active) ? active : '' }
-        const merged = !shared || list.length !== shared.list.length
-        if (!merged) {
-          setEvents(next.list)
-          setEventName(next.active)
-          keepValue(EVENTS_SYNCED_KEY, true)
-        } else if (list.length) {
-          // Marked done only once saved, so a failed save is retried on the next read.
-          commitEvents(next, null).then(ok => ok && keepValue(EVENTS_SYNCED_KEY, true))
-        }
+  // Whether this browser had its own events before this visit (not just the default list), and
+  // whether merging them into the shared list was tried in this visit.
+  const [hadLocalEvents] = useState(() => (readKept('cz-admin-events', null) ?? readSaved('cz-admin-events', null)) !== null)
+  const eventsMergeTried = useRef(false)
+
+  const readShared = (kind, key, fallback, apply) => {
+    const state = shared.current[kind]
+    const version = state.version
+    readSetting(key, fallback)
+      .then(value => {
+        if (state.pending || state.version !== version) return
+        apply(value)
       })
       .catch(() => {})
   }
+
+  const applyWords = saved => {
+    const first = !wordsSynced.current
+    wordsSynced.current = true
+    if (isWordChanges(saved)) {
+      setWordChanges(saved)
+      return
+    }
+    // No shared list yet: the first admin to open this version carries over this browser's changes.
+    const local = live.current.wordChanges
+    if (first && local && Object.keys(local).length) commitWords(local)
+  }
+
+  const applyEvents = saved => {
+    const sharedList = isEventsValue(saved) ? saved : null
+    // Events this browser kept before they were shared are merged in once, so an event added on
+    // this device before the move is not lost.
+    let local = []
+    if (hadLocalEvents && !eventsMergeTried.current && !readKept(EVENTS_SYNCED_KEY, false)) {
+      const kept = readKept('cz-admin-events', null)
+      local = Array.isArray(kept) ? kept.filter(e => typeof e === 'string' && e.trim()) : []
+    }
+    const list = [...(sharedList ? sharedList.list : []), ...local.filter(e => !sharedList?.list.includes(e))]
+    const active = sharedList ? sharedList.active : readKept('cz-admin-event', '') || ''
+    const next = { list, active: list.includes(active) ? active : '' }
+    if (sharedList && list.length === sharedList.list.length) {
+      setEvents(next.list)
+      setEventName(next.active)
+      keepValue(EVENTS_SYNCED_KEY, true)
+    } else if (list.length && !eventsMergeTried.current) {
+      // Tried once per visit; marked done only once saved, so a failed save is retried next visit.
+      eventsMergeTried.current = true
+      commitEvents(next).then(ok => ok && keepValue(EVENTS_SYNCED_KEY, true))
+    }
+  }
+
+  const readKind = {
+    gap: () => readShared('gap', AUTO_GAP_KEY, DEFAULT_AUTO_GAP, v => setAutoGapState(Number(v) || DEFAULT_AUTO_GAP)),
+    words: () => readShared('words', BAD_WORDS_KEY, null, applyWords),
+    events: () => readShared('events', EVENTS_KEY, null, applyEvents),
+  }
+  // Reads all shared settings. Runs on open, on a Realtime change, and from the poll.
+  const loadShared = () => Object.values(readKind).forEach(read => read())
   useEffect(() => {
     loadShared()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  const setAutoGap = sec => {
-    const before = autoGap
-    setAutoGapState(sec)
-    saveSetting(AUTO_GAP_KEY, sec).catch(() => {
-      setAutoGapState(before)
-      setToast({ id: null, prev: null, msg: pick(['Gagal menyimpan jeda. Coba lagi.', 'Could not save the gap. Try again.'], live.current.lang), color: '#BF0000' })
-    })
-  }
 
-  // Saves the word list for every admin device. A failed save puts the earlier list back and says so.
-  const commitWords = (next, before = live.current.wordChanges) => {
-    setWordChanges(next)
-    wordSaving.current += 1
-    wordChangedAt.current = Date.now()
-    saveSetting(BAD_WORDS_KEY, next)
-      .catch(() => {
-        if (before) setWordChanges(before)
-        setToast({ id: null, prev: null, msg: pick(['Gagal menyimpan daftar kata. Coba lagi.', 'Could not save the word list. Try again.'], live.current.lang), color: '#BF0000' })
-      })
+  // Saves one shared setting. Resolves true when saved; on failure says so and resolves false.
+  const saveShared = (kind, key, value, failMsg) => {
+    const state = shared.current[kind]
+    state.pending += 1
+    state.version += 1
+    const run = saveQueue.current.then(() => saveSetting(key, value))
+    saveQueue.current = run.catch(() => {})
+    return run
+      .then(
+        () => true,
+        () => {
+          setToast({ id: null, prev: null, msg: pick(failMsg, live.current.lang), color: '#BF0000' })
+          return false
+        },
+      )
       .finally(() => {
-        wordSaving.current -= 1
-        wordChangedAt.current = Date.now()
+        state.pending -= 1
+        state.version += 1
+        if (!state.pending) readKind[kind]()
       })
   }
 
-  // Saves the events for every admin device. A failed save puts the earlier events back and says so.
-  const commitEvents = (next, before = { list: live.current.events, active: live.current.eventName }) => {
+  const setAutoGap = sec => {
+    setAutoGapState(sec)
+    saveShared('gap', AUTO_GAP_KEY, sec, ['Gagal menyimpan jeda. Coba lagi.', 'Could not save the gap. Try again.'])
+  }
+
+  // Saves the word list for every admin device.
+  const commitWords = next => {
+    setWordChanges(next)
+    return saveShared('words', BAD_WORDS_KEY, next, ['Gagal menyimpan daftar kata. Coba lagi.', 'Could not save the word list. Try again.'])
+  }
+
+  // Saves the events for every admin device.
+  const commitEvents = next => {
     setEvents(next.list)
     setEventName(next.active)
-    eventSaving.current += 1
-    eventChangedAt.current = Date.now()
-    return saveSetting(EVENTS_KEY, next)
-      .then(() => true)
-      .catch(() => {
-        if (before) {
-          setEvents(before.list)
-          setEventName(before.active)
-        }
-        setToast({ id: null, prev: null, msg: pick(['Gagal menyimpan event. Coba lagi.', 'Could not save the event. Try again.'], live.current.lang), color: '#BF0000' })
-        return false
-      })
-      .finally(() => {
-        eventSaving.current -= 1
-        eventChangedAt.current = Date.now()
-      })
+    return saveShared('events', EVENTS_KEY, next, ['Gagal menyimpan event. Coba lagi.', 'Could not save the event. Try again.'])
   }
 
   const toggleSetting = k => {

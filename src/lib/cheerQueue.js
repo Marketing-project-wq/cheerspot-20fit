@@ -1,14 +1,14 @@
 // The only data layer for the booth queue. Components import this file and nothing else.
 // Reads approved and played cheers from Supabase. Realtime pushes each change, which triggers a
-// fresh read; a slow poll covers missed events, and a fast one runs while Realtime is down.
-// The operator's order lives in memory only.
+// fresh read right away. The 3-second poll always runs as well: the DJ may only read approved and
+// played cheers, so when the superadmin pulls a cheer back (approved -> pending or rejected) the
+// booth gets no Realtime event and learns it from the poll. The operator's order lives in memory only.
 import { getAudioUrl } from './cheers.js'
 import { watchTables } from './realtime.js'
 import { deleteCheer } from './staff.js'
 import { supabase } from './supabase.js'
 
 const POLL_MS = 3000
-const LIVE_POLL_MS = 15000
 const HISTORY_LIMIT = 50
 const COLUMNS = 'id, created_at, sender_name, athlete_name, duration_sec, audio_path, status, transcript'
 
@@ -29,7 +29,6 @@ let loading = null
 // A change arrived while a read was in flight. That read may predate it, so read once more after.
 let again = false
 let unwatch = null
-let live = false
 
 function toItem(row) {
   if (playedPending.has(row.id) && row.status !== 'approved') playedPending.delete(row.id)
@@ -104,33 +103,22 @@ export function refresh() {
   return loading
 }
 
-function schedule() {
-  clearInterval(timer)
-  timer = setInterval(refresh, live ? LIVE_POLL_MS : POLL_MS)
-}
-
 function startPolling() {
   if (timer) return
   refresh()
-  schedule()
+  timer = setInterval(refresh, POLL_MS)
   window.addEventListener('focus', refresh)
   unwatch = watchTables(
     ['cheerspot_cheers'],
     () => refresh(),
-    isLive => {
-      if (isLive === live || !timer) return
-      live = isLive
-      schedule()
-      // Back online: changes made while the channel was down were not pushed.
-      if (isLive) refresh()
-    },
+    // Back online: changes made while the channel was down were not pushed.
+    isLive => isLive && timer && refresh(),
   )
 }
 
 function stopPolling() {
   clearInterval(timer)
   timer = null
-  live = false
   unwatch?.()
   unwatch = null
   window.removeEventListener('focus', refresh)

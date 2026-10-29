@@ -15,18 +15,22 @@ export default function CheerStatus({ lang, cheers: all, limit = all.length, tit
   useEffect(() => {
     let alive = true
     const known = {}
+    // Checks still waiting for an answer. On a slow connection they are not sent again meanwhile.
+    const asking = new Set()
     const check = () => {
       if (document.visibilityState === 'hidden') return
       cheers
-        .filter(c => !(c.id in known) || !FINAL.has(known[c.id]))
-        .forEach(c =>
+        .filter(c => !asking.has(c.id) && (!(c.id in known) || !FINAL.has(known[c.id])))
+        .forEach(c => {
+          asking.add(c.id)
           getCheerStatus(c.id)
             .then(status => {
               known[c.id] = status ?? null
               if (alive) setStatuses(s => ({ ...s, [c.id]: status ?? null }))
             })
-            .catch(() => {}),
-        )
+            .catch(() => {})
+            .finally(() => asking.delete(c.id))
+        })
     }
     check()
     const timer = setInterval(check, POLL_MS)
