@@ -30,8 +30,16 @@ async function isFile(path) {
   }
 }
 
+// Built files in /assets have a content hash in their name, so they can be cached for good.
+// Everything else (index.html above all) is checked again on every load, so a new deploy shows up
+// on the next refresh instead of an old page pointing at old styles.
+function cacheControl(path) {
+  return path.startsWith(join(root, 'assets') + sep) ? 'public, max-age=31536000, immutable' : 'no-cache'
+}
+
 function send(res, path) {
   res.setHeader('Content-Type', types[extname(path)] ?? 'application/octet-stream')
+  res.setHeader('Cache-Control', cacheControl(path))
   createReadStream(path).pipe(res)
 }
 
