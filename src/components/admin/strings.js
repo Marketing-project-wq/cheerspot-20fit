@@ -69,7 +69,7 @@ const COPY = {
   print: ['Cetak poster A4', 'Print A4 poster'],
   qrNote: ['QR ini berubah otomatis mengikuti nama event di Pengaturan.', 'This QR updates automatically with the event name in Settings.'],
   settings: ['Pengaturan', 'Settings'],
-  setSub: ['Jeda AUTO dan daftar kata tersimpan untuk semua perangkat. Pengaturan lain tersimpan di browser ini.', 'The AUTO gap and the word list are saved for every device. Other settings are saved in this browser.'],
+  setSub: ['Event, jeda AUTO, dan daftar kata tersimpan untuk semua perangkat. Tombol on/off lain tersimpan di browser ini.', 'Events, the AUTO gap and the word list are saved for every device. The other switches are saved in this browser.'],
   evAdd: ['Tambah event', 'Add event'],
   evPh: ['mis. HYROX Sportfest Vol.3', 'e.g. HYROX Sportfest Vol.3'],
   evList: ['Daftar event', 'Events'],

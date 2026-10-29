@@ -14,7 +14,7 @@ import { keepValue, readKept, readSaved, saveValue } from './storage.js'
 import { DEFAULT_WORD_LEVELS, LEVELS, applyWordChanges, isWordChanges, needsReview, scanWords } from './badWords.js'
 import { fetchRecentCheers, getAudioUrl, updateCheerStatus } from '../../lib/cheers.js'
 import { deleteCheer } from '../../lib/staff.js'
-import { AUTO_GAP_KEY, BAD_WORDS_KEY, DEFAULT_AUTO_GAP, readSetting, saveSetting } from '../../lib/settings.js'
+import { AUTO_GAP_KEY, BAD_WORDS_KEY, DEFAULT_AUTO_GAP, EVENTS_KEY, readSetting, saveSetting } from '../../lib/settings.js'
 import { watchTables } from '../../lib/realtime.js'
 
 // New cheers, transcripts and status changes from the booth are pushed by Realtime and show up
@@ -48,17 +48,26 @@ const fromRow = row => {
 }
 
 const PAGES = ['mod', 'queue', 'hist', 'qr', 'dj', 'set']
+// Set once this browser's own events have been merged into the shared list.
+const EVENTS_SYNCED_KEY = 'cz-admin-events-synced'
+const isEventsValue = value =>
+  !!value &&
+  Array.isArray(value.list) &&
+  value.list.every(e => typeof e === 'string') &&
+  typeof value.active === 'string'
 
 // Local moderation state for the superadmin dashboard. The TODO(supabase) marks where the
 // cheer feed, moderation writes and DJ queue would come from the database.
 export default function useModeration({ lang, liveFeed }) {
   const [items, setItems] = useState(createInitialItems)
-  // Settings and events are kept in this browser (localStorage), like the word list.
+  // These switches are kept in this browser (localStorage).
   const [settings, setSettings] = useState(() => ({ ...DEFAULT_SETTINGS, ...readKept('cz-admin-settings', {}) }))
   useEffect(() => {
     keepValue('cz-admin-settings', settings)
   }, [settings])
   // Events the admin has entered. At most one is active: it drives the QR link. '' means none.
+  // Saved in cheerspot_settings for every admin device; this browser keeps a copy (localStorage)
+  // so the list shows before the first read.
   const [events, setEvents] = useState(() => {
     const saved = readKept('cz-admin-events', null) ?? readSaved('cz-admin-events', null)
     return Array.isArray(saved) && saved.length ? saved : [DEFAULT_EVENT]
@@ -212,7 +221,7 @@ export default function useModeration({ lang, liveFeed }) {
   // Latest committed state, read by timers and the key handler so they never use a stale closure.
   const live = useRef({})
   useEffect(() => {
-    live.current = { items, settings, words, wordChanges, page, tab, q, focus, picking, playId, toast, lang }
+    live.current = { items, settings, words, wordChanges, events, eventName, page, tab, q, focus, picking, playId, toast, lang }
   })
 
   const nextId = useRef(100)
@@ -395,6 +404,8 @@ export default function useModeration({ lang, liveFeed }) {
   const wordSaving = useRef(0)
   const wordChangedAt = useRef(0)
   const wordsSynced = useRef(false)
+  const eventSaving = useRef(0)
+  const eventChangedAt = useRef(0)
   // Reads the shared settings (gap and word list). Runs on open and whenever Realtime reports a change.
   const loadShared = () => {
     readSetting(AUTO_GAP_KEY, DEFAULT_AUTO_GAP)
@@ -413,6 +424,31 @@ export default function useModeration({ lang, liveFeed }) {
         // No shared list yet: the first admin to open this version carries over this browser's changes.
         const local = live.current.wordChanges
         if (first && local && Object.keys(local).length) commitWords(local, null)
+      })
+      .catch(() => {})
+    readSetting(EVENTS_KEY, null)
+      .then(saved => {
+        if (eventSaving.current || eventChangedAt.current >= sentAt) return
+        // Events this browser kept before they were shared (read once, then never again here), so
+        // an event added on this device before the move is not lost.
+        let local = []
+        if (!readKept(EVENTS_SYNCED_KEY, false)) {
+          const kept = readKept('cz-admin-events', null)
+          local = Array.isArray(kept) ? kept.filter(e => typeof e === 'string' && e.trim()) : []
+        }
+        const shared = isEventsValue(saved) ? saved : null
+        const list = [...(shared ? shared.list : []), ...local.filter(e => !shared?.list.includes(e))]
+        const active = shared ? shared.active : readKept('cz-admin-event', '') || ''
+        const next = { list, active: list.includes(active) ? active : '' }
+        const merged = !shared || list.length !== shared.list.length
+        if (!merged) {
+          setEvents(next.list)
+          setEventName(next.active)
+          keepValue(EVENTS_SYNCED_KEY, true)
+        } else if (list.length) {
+          // Marked done only once saved, so a failed save is retried on the next read.
+          commitEvents(next, null).then(ok => ok && keepValue(EVENTS_SYNCED_KEY, true))
+        }
       })
       .catch(() => {})
   }
@@ -445,6 +481,28 @@ export default function useModeration({ lang, liveFeed }) {
       })
   }
 
+  // Saves the events for every admin device. A failed save puts the earlier events back and says so.
+  const commitEvents = (next, before = { list: live.current.events, active: live.current.eventName }) => {
+    setEvents(next.list)
+    setEventName(next.active)
+    eventSaving.current += 1
+    eventChangedAt.current = Date.now()
+    return saveSetting(EVENTS_KEY, next)
+      .then(() => true)
+      .catch(() => {
+        if (before) {
+          setEvents(before.list)
+          setEventName(before.active)
+        }
+        setToast({ id: null, prev: null, msg: pick(['Gagal menyimpan event. Coba lagi.', 'Could not save the event. Try again.'], live.current.lang), color: '#BF0000' })
+        return false
+      })
+      .finally(() => {
+        eventSaving.current -= 1
+        eventChangedAt.current = Date.now()
+      })
+  }
+
   const toggleSetting = k => {
     const v = !live.current.settings[k]
     setSettings(s => ({ ...s, [k]: v }))
@@ -468,17 +526,20 @@ export default function useModeration({ lang, liveFeed }) {
   const addEvent = () => {
     const name = eventIn.trim()
     if (!name) return
-    setEvents(list => (list.includes(name) ? list : [...list, name]))
-    setEventName(cur => cur || name)
+    const { events: list, eventName: active } = live.current
+    commitEvents({ list: list.includes(name) ? list : [...list, name], active: active || name })
     setEventIn('')
   }
 
   // Turning an event on makes it the only active one; turning the active one off leaves none.
-  const toggleEvent = name => setEventName(cur => (cur === name ? '' : name))
+  const toggleEvent = name => {
+    const { events: list, eventName: active } = live.current
+    commitEvents({ list, active: active === name ? '' : name })
+  }
 
   const removeEvent = name => {
-    setEvents(list => list.filter(x => x !== name))
-    setEventName(cur => (cur === name ? '' : cur))
+    const { events: list, eventName: active } = live.current
+    commitEvents({ list: list.filter(x => x !== name), active: active === name ? '' : active })
   }
 
   const copyLink = () => {

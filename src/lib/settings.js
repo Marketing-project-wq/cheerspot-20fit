@@ -8,6 +8,9 @@ export const DEFAULT_AUTO_GAP = 60
 // The superadmin's changes to the built-in moderation word list ({ word: 'high' | 'medium' | 'low' | 'off' }),
 // so every admin device flags transcripts the same way.
 export const BAD_WORDS_KEY = 'bad_words'
+// The superadmin's events and which one is active ({ list: string[], active: string }, '' = none).
+// The active event drives the QR link and poster.
+export const EVENTS_KEY = 'events'
 
 export async function readSetting(key, fallback) {
   if (!supabase) return fallback
