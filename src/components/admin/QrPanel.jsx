@@ -8,9 +8,16 @@ export default function QrPanel({ lang, eventName, copied, onCopy }) {
   const S = STRINGS[lang] || STRINGS.id
   const url = cheerUrl(eventName)
 
-  // Real QR matrix for the cheer link; recomputed only when the link changes.
-  const qr = useMemo(() => QRCode.create(url, { errorCorrectionLevel: 'M' }), [url])
-  const size = qr.modules.size
+  // Real QR matrix for the cheer link, drawn as one SVG path so it scales to the card's width.
+  // Recomputed only when the link changes.
+  const { size, path } = useMemo(() => {
+    const { modules } = QRCode.create(url, { errorCorrectionLevel: 'M' })
+    let d = ''
+    modules.data.forEach((on, i) => {
+      if (on) d += `M${i % modules.size} ${Math.floor(i / modules.size)}h1v1h-1z`
+    })
+    return { size: modules.size, path: d }
+  }, [url])
 
   const download = async () => {
     const dataUrl = await QRCode.toDataURL(url, { width: 1024, margin: 2, errorCorrectionLevel: 'M' })
@@ -31,10 +38,10 @@ export default function QrPanel({ lang, eventName, copied, onCopy }) {
         <div className="adm-qr__poster">
           <Logo className="adm-logo--qr" />
           {eventName && <div className="adm-qr__event">{eventName}</div>}
-          <div className="adm-qr__grid" style={{ '--qr-n': size }}>
-            {Array.from(qr.modules.data, (on, i) => (
-              <span key={i} className={on ? 'adm-qr__cell is-on' : 'adm-qr__cell'} />
-            ))}
+          <div className="adm-qr__code">
+            <svg viewBox={`0 0 ${size} ${size}`} role="img" aria-label={url} shapeRendering="crispEdges">
+              <path d={path} fill="#0a0a0a" />
+            </svg>
           </div>
           <div className="adm-qr__scan">{S.scan}</div>
         </div>
