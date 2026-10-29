@@ -41,9 +41,9 @@
 }
 
 .booth-top {
-  /* Header controls: one height, and one width per button, so the row lines up. */
+  /* Header controls: status, AUTO, MANUAL and Log out share one height and one width. */
   --top-h: 44px;
-  --top-w: 112px;
+  --top-w: 140px;
   --top-fs: 15px;
   display: flex;
   flex-wrap: wrap;
@@ -67,9 +67,9 @@
   justify-content: center;
   gap: 10px;
   height: var(--top-h);
-  /* Fits the longest label ("Cheer playing"), so the row does not shift as the status changes. */
-  width: 160px;
-  padding: 0 14px;
+  /* Same width for every label, so the row does not shift as the status changes. */
+  width: var(--top-w);
+  padding: 0;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel-2);
@@ -145,11 +145,11 @@
   object-fit: contain;
 }
 
-.booth-logout {
+/* .booth-btn comes later and resets the font, so this needs both classes to win. */
+.booth-btn.booth-logout {
   flex: none;
   width: var(--top-w);
   height: var(--top-h);
-  min-height: 0;
   padding: 0;
   font-size: var(--top-fs);
   font-weight: 800;
@@ -971,9 +971,15 @@
 }
 
 @media (max-width: 480px) {
-  /* Phone: status and Log out share a row, the mode switch takes the full row below. */
-  .booth-pill {
-    flex: 1 1 auto;
+  /* Phone: logo on its own row, then status and Log out side by side at equal width, then the
+     mode switch across the full row. */
+  .booth-title {
+    flex: 1 1 100%;
+  }
+
+  .booth-pill,
+  .booth-btn.booth-logout {
+    flex: 1 1 0;
     width: auto;
   }
 
