@@ -41,6 +41,7 @@
 }
 
 .booth-top {
+  --top-h: 46px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -56,24 +57,53 @@
   letter-spacing: 0.01em;
 }
 
+/* Status, mode switch and Log out share one height, corner and type, so the header reads as one row. */
 .booth-pill {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  justify-content: center;
+  gap: 10px;
+  height: var(--top-h);
+  /* Fits the longest label ("Cheer playing"), so the row does not shift as the status changes. */
+  min-width: 164px;
   padding: 0 16px;
-  border-radius: 999px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-2);
+  color: var(--text);
   font-weight: 800;
-  background: var(--tone-idle);
-  color: #fff;
+  white-space: nowrap;
 }
 
-.booth-pill--cheer { background: var(--tone-cheer); }
-.booth-pill--duck { background: var(--tone-duck); color: #111; }
-.booth-pill--music { background: var(--tone-music); color: #04110c; }
-.booth-pill--idle { background: var(--tone-idle); }
+.booth-pill::before {
+  content: '';
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--pill-tone, #737373);
+}
+
+.booth-pill--cheer { --pill-tone: var(--tone-cheer); border-color: var(--tone-cheer); }
+.booth-pill--duck { --pill-tone: var(--tone-duck); border-color: var(--tone-duck); }
+.booth-pill--music { --pill-tone: var(--tone-music); border-color: var(--tone-music); }
+.booth-pill--idle { --pill-tone: #737373; }
+
+.booth-pill--cheer::before {
+  animation: booth-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes booth-blink {
+  50% { opacity: 0.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .booth-pill--cheer::before { animation: none; }
+}
 
 .booth-mode {
   display: inline-flex;
+  height: var(--top-h);
   border: 1px solid #3a3a3a;
   border-radius: 12px;
   overflow: hidden;
@@ -81,7 +111,7 @@
 
 .booth-mode button {
   min-width: 96px;
-  min-height: 44px;
+  height: 100%;
   padding: 0 16px;
   border: 0;
   background: var(--panel-2);
@@ -90,6 +120,10 @@
   font-weight: 800;
   letter-spacing: 0.04em;
   cursor: pointer;
+}
+
+.booth-mode button:hover:not(.is-active) {
+  color: var(--text);
 }
 
 .booth-mode button.is-active,
@@ -108,6 +142,8 @@
 
 .booth-logout {
   flex: none;
+  height: var(--top-h);
+  font-weight: 800;
 }
 
 .booth-body {
