@@ -49,10 +49,6 @@ export default function CheerBooth({ onLogout }) {
             MANUAL
           </button>
         </div>
-
-        <button type="button" className="booth-btn booth-logout" onClick={onLogout}>
-          Log out
-        </button>
       </header>
 
       <div className="booth-body">
@@ -88,6 +84,12 @@ export default function CheerBooth({ onLogout }) {
           <VolumePanel cheer={booth.cheerVolume} onCheer={booth.setCheerVolume} music={booth.musicVolume} onMusic={booth.setMusicVolume} />
         </main>
       </div>
+
+      <footer className="booth-foot">
+        <button type="button" className="booth-btn booth-logout" onClick={onLogout}>
+          Log out
+        </button>
+      </footer>
 
       {toast && (
         <div className="booth-toast" role="status" key={toast.id}>

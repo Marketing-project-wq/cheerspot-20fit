@@ -14,6 +14,10 @@
   --tone-duck: #f59e0b;
   --tone-music: #10b981;
   --tone-idle: #525252;
+  /* Status, AUTO, MANUAL and Log out share one height, one width and one text size. */
+  --top-h: 44px;
+  --top-w: 140px;
+  --top-fs: 15px;
 
   box-sizing: border-box;
   min-height: 100dvh;
@@ -41,10 +45,6 @@
 }
 
 .booth-top {
-  /* Header controls: status, AUTO, MANUAL and Log out share one height and one width. */
-  --top-h: 44px;
-  --top-w: 140px;
-  --top-fs: 15px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -143,6 +143,14 @@
   max-width: 100%;
   height: clamp(32px, 4vw, 44px);
   object-fit: contain;
+}
+
+/* Log out sits at the bottom of the page, away from the controls used during a set. */
+.booth-foot {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
 }
 
 /* .booth-btn comes later and resets the font, so this needs both classes to win. */
@@ -971,15 +979,14 @@
 }
 
 @media (max-width: 480px) {
-  /* Phone: logo on its own row, then status and Log out side by side at equal width, then the
-     mode switch across the full row. */
+  /* Phone: logo on its own row, then the status, then the mode switch, each across the full row. */
   .booth-title {
     flex: 1 1 100%;
   }
 
   .booth-pill,
   .booth-btn.booth-logout {
-    flex: 1 1 0;
+    flex: 1 1 100%;
     width: auto;
   }
 
