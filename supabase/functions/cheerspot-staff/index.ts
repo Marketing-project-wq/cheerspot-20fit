@@ -117,8 +117,31 @@ function toAccount(user: any) {
   }
 }
 
-// Pages through auth users and keeps only CheerSpot DJ accounts. Never returns other systems' users.
+// Lists CheerSpot DJ accounts only. The auth project holds thousands of other 20FIT users, so the
+// Auth admin API is asked for DJ logins only (filter on the DJ email domain) instead of paging
+// through everyone. The app_metadata check below still decides what counts as a DJ account, so the
+// result stays correct even if the filter were ignored; it would only be slower.
 async function listDjAccounts(admin: any) {
+  const url = Deno.env.get('SUPABASE_URL')!
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  const accounts: ReturnType<typeof toAccount>[] = []
+  for (let page = 1; page <= MAX_PAGES; page += 1) {
+    const query = new URLSearchParams({ page: String(page), per_page: String(PER_PAGE), filter: `@${DJ_EMAIL_DOMAIN}` })
+    const res = await fetch(`${url}/auth/v1/admin/users?${query}`, {
+      headers: { Authorization: `Bearer ${key}`, apikey: key },
+    }).catch(() => null)
+    if (!res?.ok) return listDjAccountsSlow(admin)
+    const users = (await res.json())?.users ?? []
+    for (const user of users) {
+      if (user.app_metadata?.cheerspot === true && user.app_metadata?.role === 'admin') accounts.push(toAccount(user))
+    }
+    if (users.length < PER_PAGE) break
+  }
+  return sortAccounts(accounts)
+}
+
+// Fallback: pages through every auth user and keeps only CheerSpot DJ accounts.
+async function listDjAccountsSlow(admin: any) {
   const accounts: ReturnType<typeof toAccount>[] = []
   for (let page = 1; page <= MAX_PAGES; page += 1) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage: PER_PAGE })
@@ -129,5 +152,8 @@ async function listDjAccounts(admin: any) {
     }
     if (users.length < PER_PAGE) break
   }
-  return accounts.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+  return sortAccounts(accounts)
 }
+
+const sortAccounts = (accounts: ReturnType<typeof toAccount>[]) =>
+  accounts.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
