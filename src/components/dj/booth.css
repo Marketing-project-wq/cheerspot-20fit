@@ -141,7 +141,8 @@
   display: block;
   width: auto;
   max-width: 100%;
-  height: clamp(32px, 4vw, 44px);
+  /* Smaller than the 44px header controls, so the logo does not dominate the row. */
+  height: clamp(24px, 2.4vw, 32px);
   object-fit: contain;
 }
 
