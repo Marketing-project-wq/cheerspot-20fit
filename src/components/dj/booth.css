@@ -853,6 +853,18 @@
   color: var(--accent-text);
 }
 
+.booth-autopins {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.booth-autopins.is-on {
+  border-color: var(--accent);
+  background: rgba(220, 38, 38, 0.15);
+  color: var(--accent-text);
+}
+
 .booth-history__actions {
   display: flex;
   flex: none;

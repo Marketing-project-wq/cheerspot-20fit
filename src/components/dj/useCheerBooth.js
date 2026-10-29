@@ -27,10 +27,12 @@ import { getAudioUrl } from '../../lib/cheers.js'
 import { formatTime } from './boothParts.jsx'
 import { readStored, writeStored } from './boothStorage.js'
 import { AUTO_GAP_KEY, DEFAULT_AUTO_GAP, readSetting } from '../../lib/settings.js'
+import { watchTables } from '../../lib/realtime.js'
 
 const MUSIC_VOLUME_KEY = 'cheerspot.booth.musicVolume'
 const CHEER_VOLUME_KEY = 'cheerspot.booth.cheerVolume'
 const PINS_KEY = 'cheerspot.booth.pins'
+const AUTO_PINS_KEY = 'cheerspot.booth.autoPins'
 
 // What a pin keeps, so a pinned cheer can still be played after it drops out of the played list.
 const pinSnapshot = item => ({
@@ -42,9 +44,9 @@ const pinSnapshot = item => ({
   duration_sec: item.duration_sec,
 })
 
-// The gap between AUTO cheers is set by the superadmin (cheerspot_settings) and read every few
-// seconds, so a change reaches an open booth without a refresh. Fade timings are in ducking.js.
-const SETTINGS_POLL_MS = 5000
+// The gap between AUTO cheers is set by the superadmin (cheerspot_settings). Realtime pushes a
+// change to an open booth; the poll is a safety net. Fade timings are in ducking.js.
+const SETTINGS_POLL_MS = 15000
 
 // Owns the booth state: queue, playback status, mode, and the AUTO scheduler.
 export default function useCheerBooth() {
@@ -65,6 +67,12 @@ export default function useCheerBooth() {
   const gapRef = useRef(DEFAULT_AUTO_GAP)
   // When the last cheer ended. A new gap from the admin also moves the running countdown.
   const lastEndRef = useRef(0)
+  // Pinned cheers fill an empty queue in AUTO only after one full gap of quiet from booth start.
+  const startedAtRef = useRef(0)
+  // When each cheer last started in this session. AUTO replays the pinned cheer heard longest ago.
+  const lastStartRef = useRef(new Map())
+  const pinnedRef = useRef([])
+  const autoPinsRef = useRef(true)
   const itemsRef = useRef(items)
   const statusRef = useRef(status)
   const toastTimer = useRef(null)
@@ -123,9 +131,11 @@ export default function useCheerBooth() {
         .catch(() => {})
     load()
     const timer = setInterval(load, SETTINGS_POLL_MS)
+    const unwatch = watchTables(['cheerspot_settings'], load)
     return () => {
       alive = false
       clearInterval(timer)
+      unwatch()
     }
   }, [])
 
@@ -145,6 +155,7 @@ export default function useCheerBooth() {
     item => {
       playCheer(item, {
         onStart: () => {
+          lastStartRef.current.set(item.id, Date.now())
           // If the save fails the cheer shows as approved again; AUTO must not play it a second time.
           markPlayed(item.id).catch(() => {
             failedIds.current.add(item.id)
@@ -166,6 +177,7 @@ export default function useCheerBooth() {
   )
 
   // AUTO: when the gap has passed and nothing is playing, play the next approved cheer that is not already queued.
+  // With no approved cheer waiting, a pinned cheer plays instead (when Auto pins is on), the one heard longest ago first.
   useEffect(() => {
     if (!started) return undefined
     const timer = setInterval(() => {
@@ -175,10 +187,16 @@ export default function useCheerBooth() {
       const s = statusRef.current
       // busy covers the seconds while a cheer's audio loads, so it is never picked twice.
       if (s.phase === 'cheer' || s.busy || t < nextAtRef.current) return
-      const next = itemsRef.current.find(
-        item => item.status === 'approved' && !s.queued.includes(item.id) && !failedIds.current.has(item.id),
-      )
-      if (next) playItem(next)
+      const usable = item => !s.queued.includes(item.id) && !failedIds.current.has(item.id)
+      const next = itemsRef.current.find(item => item.status === 'approved' && usable(item))
+      if (next) {
+        playItem(next)
+        return
+      }
+      if (!autoPinsRef.current || t < startedAtRef.current + gapRef.current * 1000) return
+      const heard = item => lastStartRef.current.get(item.id) || 0
+      const pin = pinnedRef.current.filter(usable).sort((a, b) => heard(a) - heard(b))[0]
+      if (pin) playItem(pin)
     }, 500)
     return () => clearInterval(timer)
   }, [started, playItem])
@@ -210,6 +228,7 @@ export default function useCheerBooth() {
       showToast('YouTube did not load. Live input still works.')
     }
     setNextAt(0)
+    startedAtRef.current = Date.now()
     setStarted(true)
   }, [showToast])
 
@@ -227,6 +246,30 @@ export default function useCheerBooth() {
       window.removeEventListener('keydown', onGesture, true)
     }
   }, [needsTap, startSession])
+
+  // Pinned cheers: the DJ's picks, one tap away, to warm up the crowd. Kept on this booth laptop.
+  const [pins, setPins] = useState(() => {
+    const saved = readStored(PINS_KEY, [])
+    return Array.isArray(saved) ? saved.filter(p => p && p.id && p.audio_path) : []
+  })
+  useEffect(() => {
+    writeStored(PINS_KEY, pins)
+  }, [pins])
+  const togglePin = item =>
+    setPins(list => (list.some(p => p.id === item.id) ? list.filter(p => p.id !== item.id) : [...list, pinSnapshot(item)]))
+  // A pinned cheer plays from the live list when it is there, else from its saved copy.
+  const pinned = pins.map(
+    p => items.find(item => item.id === p.id) || { ...p, status: 'played', getAudioUrl: () => getAudioUrl(p.audio_path) },
+  )
+  // Auto pins: AUTO plays pinned cheers while the queue is empty. Kept on this booth laptop.
+  const [autoPins, setAutoPins] = useState(() => readStored(AUTO_PINS_KEY, true) !== false)
+  useEffect(() => {
+    writeStored(AUTO_PINS_KEY, autoPins)
+  }, [autoPins])
+  useEffect(() => {
+    pinnedRef.current = pinned
+    autoPinsRef.current = autoPins
+  })
 
   const approved = items.filter(item => item.status === 'approved')
   const focusItem =
@@ -247,8 +290,13 @@ export default function useCheerBooth() {
 
   let countdown = null
   if (mode === 'auto') {
-    if (!approved.length) countdown = 'Queue is empty'
-    else if (!status.cheerId) {
+    if (!approved.length) {
+      countdown = 'Queue is empty'
+      if (!status.cheerId && autoPins && pins.length) {
+        const left = Math.ceil((Math.max(nextAt, startedAtRef.current + gapRef.current * 1000) - now) / 1000)
+        countdown = left > 0 ? `Queue is empty. Pinned cheer in ${formatTime(left)}` : 'Queue is empty. Pinned cheer starting'
+      }
+    } else if (!status.cheerId) {
       const left = Math.ceil((nextAt - now) / 1000)
       countdown = left > 0 ? `Next cheer in ${formatTime(left)}` : 'Next cheer starting'
     }
@@ -279,21 +327,6 @@ export default function useCheerBooth() {
     }
     if (focusItem) playItem(focusItem)
   }
-
-  // Pinned cheers: the DJ's picks, one tap away, to warm up the crowd. Kept on this booth laptop.
-  const [pins, setPins] = useState(() => {
-    const saved = readStored(PINS_KEY, [])
-    return Array.isArray(saved) ? saved.filter(p => p && p.id && p.audio_path) : []
-  })
-  useEffect(() => {
-    writeStored(PINS_KEY, pins)
-  }, [pins])
-  const togglePin = item =>
-    setPins(list => (list.some(p => p.id === item.id) ? list.filter(p => p.id !== item.id) : [...list, pinSnapshot(item)]))
-  // A pinned cheer plays from the live list when it is there, else from its saved copy.
-  const pinned = pins.map(
-    p => items.find(item => item.id === p.id) || { ...p, status: 'played', getAudioUrl: () => getAudioUrl(p.audio_path) },
-  )
 
   // Deleting asks first: the voice note is removed for good, also for the superadmin. Its pin goes too.
   const deleteItem = item => {
@@ -334,6 +367,8 @@ export default function useCheerBooth() {
     deleteItem,
     pinned,
     togglePin,
+    autoPins,
+    setAutoPins,
     moveUp,
     moveDown,
     reorder: setOrder,

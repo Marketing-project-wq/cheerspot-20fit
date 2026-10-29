@@ -1,11 +1,14 @@
 // The only data layer for the booth queue. Components import this file and nothing else.
-// Reads approved and played cheers from Supabase. The table is not in the realtime publication,
-// so the queue polls while the booth is open. The operator's order lives in memory only.
+// Reads approved and played cheers from Supabase. Realtime pushes each change, which triggers a
+// fresh read; a slow poll covers missed events, and a fast one runs while Realtime is down.
+// The operator's order lives in memory only.
 import { getAudioUrl } from './cheers.js'
+import { watchTables } from './realtime.js'
 import { deleteCheer } from './staff.js'
 import { supabase } from './supabase.js'
 
 const POLL_MS = 3000
+const LIVE_POLL_MS = 15000
 const HISTORY_LIMIT = 50
 const COLUMNS = 'id, created_at, sender_name, athlete_name, duration_sec, audio_path, status, transcript'
 
@@ -23,6 +26,10 @@ const listeners = new Set()
 const errorListeners = new Set()
 let timer = null
 let loading = null
+// A change arrived while a read was in flight. That read may predate it, so read once more after.
+let again = false
+let unwatch = null
+let live = false
 
 function toItem(row) {
   if (playedPending.has(row.id) && row.status !== 'approved') playedPending.delete(row.id)
@@ -77,30 +84,55 @@ async function fetchCheers() {
 
 // Fetches now. Overlapping calls share one request. Errors go to the error listeners.
 export function refresh() {
-  if (!loading) {
-    loading = fetchCheers()
-      .then(next => {
-        items = applyOrder(next)
-        emit()
-      })
-      .catch(err => errorListeners.forEach(callback => callback(err)))
-      .finally(() => {
-        loading = null
-      })
+  if (loading) {
+    again = true
+    return loading
   }
+  loading = fetchCheers()
+    .then(next => {
+      items = applyOrder(next)
+      emit()
+    })
+    .catch(err => errorListeners.forEach(callback => callback(err)))
+    .finally(() => {
+      loading = null
+      if (again) {
+        again = false
+        refresh()
+      }
+    })
   return loading
+}
+
+function schedule() {
+  clearInterval(timer)
+  timer = setInterval(refresh, live ? LIVE_POLL_MS : POLL_MS)
 }
 
 function startPolling() {
   if (timer) return
   refresh()
-  timer = setInterval(refresh, POLL_MS)
+  schedule()
   window.addEventListener('focus', refresh)
+  unwatch = watchTables(
+    ['cheerspot_cheers'],
+    () => refresh(),
+    isLive => {
+      if (isLive === live || !timer) return
+      live = isLive
+      schedule()
+      // Back online: changes made while the channel was down were not pushed.
+      if (isLive) refresh()
+    },
+  )
 }
 
 function stopPolling() {
   clearInterval(timer)
   timer = null
+  live = false
+  unwatch?.()
+  unwatch = null
   window.removeEventListener('focus', refresh)
 }
 

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { COPY, SUCCESS_VARIANTS } from './copy.js'
 import { ButtonMicIcon, VariantIcon } from './icons.jsx'
 import { LOGO_URL } from '../../lib/brand.js'
+import CheerStatus from './CheerStatus.jsx'
 
 const FX_COLORS = ['#BF0000', '#FFFFFF', '#FF4545', '#FFFFFF', '#BF0000']
 
@@ -28,7 +29,7 @@ const FX_PARTICLES = Array.from({ length: 26 }, (_, i) => {
 const TRAIL = /[\s‍️\p{Extended_Pictographic}]+$/u
 const EMOJI_TAIL = /[‍️\p{Extended_Pictographic}]+(?:\s*[‍️\p{Extended_Pictographic}]+)*$/u
 
-export default function SuccessScreen({ lang, athlete, onAgain }) {
+export default function SuccessScreen({ lang, athlete, sent, onAgain }) {
   // A random variant per success, like the design's default
   const [v] = useState(() => 1 + Math.floor(Math.random() * 5))
   const item = SUCCESS_VARIANTS[v]
@@ -86,6 +87,10 @@ export default function SuccessScreen({ lang, athlete, onAgain }) {
             </span>
           ))}
         </p>
+      </div>
+
+      <div className="cz-s-status">
+        <CheerStatus lang={lang} cheers={sent} limit={1} />
       </div>
 
       <div className="cz-s-foot">

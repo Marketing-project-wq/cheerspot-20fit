@@ -30,6 +30,8 @@ export default function CheerQueue({
   onReorder,
   onDelete,
   onTogglePin,
+  autoPins,
+  onAutoPins,
 }) {
   const pinnedIds = new Set(pinned.map(item => item.id))
   const [dragId, setDragId] = useState(null)
@@ -63,6 +65,15 @@ export default function CheerQueue({
           <header className="booth-panel__head">
             <h2 id="booth-pinned-title">Pinned</h2>
             <span className="booth-count">{pinned.length}</span>
+            <button
+              type="button"
+              className={`booth-btn booth-autopins${autoPins ? ' is-on' : ''}`}
+              onClick={() => onAutoPins(!autoPins)}
+              aria-pressed={autoPins}
+              title="In AUTO, play pinned cheers while the queue is empty"
+            >
+              Auto when queue is empty: {autoPins ? 'On' : 'Off'}
+            </button>
           </header>
           <ol className="booth-pinned__list">
             {pinned.map(item => {

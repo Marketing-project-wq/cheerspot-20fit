@@ -11,14 +11,17 @@ import {
   visibleItems,
 } from './data.js'
 import { keepValue, readKept, readSaved, saveValue } from './storage.js'
-import { DEFAULT_WORD_LEVELS, LEVELS, applyWordChanges, needsReview, scanWords } from './badWords.js'
+import { DEFAULT_WORD_LEVELS, LEVELS, applyWordChanges, isWordChanges, needsReview, scanWords } from './badWords.js'
 import { fetchRecentCheers, getAudioUrl, updateCheerStatus } from '../../lib/cheers.js'
 import { deleteCheer } from '../../lib/staff.js'
-import { AUTO_GAP_KEY, DEFAULT_AUTO_GAP, readSetting, saveSetting } from '../../lib/settings.js'
+import { AUTO_GAP_KEY, BAD_WORDS_KEY, DEFAULT_AUTO_GAP, readSetting, saveSetting } from '../../lib/settings.js'
+import { watchTables } from '../../lib/realtime.js'
 
-// New cheers and status changes from the booth show up within a few seconds, without a refresh.
+// New cheers, transcripts and status changes from the booth are pushed by Realtime and show up
+// right away. The poll is a safety net: slow while Realtime is connected, fast while it is down.
+const LIVE_POLL_MS = 15000
 const POLL_MS = 3000
-// While a cheer waits for its transcript, poll faster so the text shows as soon as it is saved.
+// While a cheer waits for its transcript and Realtime is down, poll faster so the text shows soon.
 const FAST_POLL_MS = 1000
 const NEW_MARK_MS = 9000
 // Transcription runs right after a cheer is sent. Without a transcript after this long it most
@@ -70,8 +73,9 @@ export default function useModeration({ lang, liveFeed }) {
     keepValue('cz-admin-events', events)
     keepValue('cz-admin-event', eventName)
   }, [events, eventName])
-  // Moderation words by level ({ high, medium, low }): the default list plus this admin's changes,
-  // kept in this browser (localStorage) so they survive closing the tab.
+  // Moderation words by level ({ high, medium, low }): the default list plus the superadmin's changes.
+  // The changes live in cheerspot_settings, shared by every admin device; this browser keeps a copy
+  // (localStorage) so the list shows before the first read.
   const [wordChanges, setWordChanges] = useState(() => {
     const kept = readKept('cz-admin-word-changes', null)
     if (kept && typeof kept === 'object') return kept
@@ -125,10 +129,16 @@ export default function useModeration({ lang, liveFeed }) {
   const loadedOnce = useRef(false)
   useEffect(() => {
     let alive = true
+    // Reads can overlap (Realtime, poll, tab focus). Only a read newer than the last applied one counts.
+    let sent = 0
+    let applied = 0
+    let isLive = false
     const load = async () => {
       const sentAt = Date.now()
+      const n = ++sent
       const rows = await fetchRecentCheers()
-      if (!alive || !rows) return
+      if (!alive || !rows || n < applied) return
+      applied = n
       const stale = id => saving.current.has(id) || (changedAt.current.get(id) || 0) >= sentAt
       const known = new Set(live.current.items.map(x => x.id))
       const arrived = loadedOnce.current ? rows.filter(row => !known.has(row.id)).map(row => row.id) : []
@@ -152,21 +162,40 @@ export default function useModeration({ lang, liveFeed }) {
       if (st.autoApprove) fresh.filter(row => !needsReview(scanWords(row.transcript, w))).forEach(row => autoApprove(row.id))
     }
     let t = null
+    // tick restarts the loop. Only the latest call schedules the next one, so restarts never stack.
+    let loop = 0
     const tick = async () => {
+      clearTimeout(t)
+      const mine = ++loop
       await load().catch(() => {})
-      if (!alive) return
+      if (!alive || mine !== loop) return
       const waiting = live.current.items?.some(x => x.transcribing)
-      t = setTimeout(tick, waiting ? FAST_POLL_MS : POLL_MS)
+      t = setTimeout(tick, isLive ? LIVE_POLL_MS : waiting ? FAST_POLL_MS : POLL_MS)
     }
     tick()
     const onVisible = () => {
       if (document.visibilityState === 'visible') load().catch(() => {})
     }
     document.addEventListener('visibilitychange', onVisible)
+    const unwatch = watchTables(
+      ['cheerspot_cheers', 'cheerspot_settings'],
+      table => {
+        if (table === 'cheerspot_settings') loadShared()
+        else load().catch(() => {})
+      },
+      next => {
+        if (next === isLive) return
+        isLive = next
+        // Back online: changes made while the channel was down were not pushed.
+        if (next) loadShared()
+        tick()
+      },
+    )
     return () => {
       alive = false
       clearTimeout(t)
       document.removeEventListener('visibilitychange', onVisible)
+      unwatch()
     }
   }, [])
   const [tab, setTab] = useState('pending')
@@ -183,7 +212,7 @@ export default function useModeration({ lang, liveFeed }) {
   // Latest committed state, read by timers and the key handler so they never use a stale closure.
   const live = useRef({})
   useEffect(() => {
-    live.current = { items, settings, words, page, tab, q, focus, picking, playId, toast, lang }
+    live.current = { items, settings, words, wordChanges, page, tab, q, focus, picking, playId, toast, lang }
   })
 
   const nextId = useRef(100)
@@ -361,10 +390,35 @@ export default function useModeration({ lang, liveFeed }) {
 
   // Gap between AUTO cheers in the booth, stored in the database so the booth on another device follows.
   const [autoGap, setAutoGapState] = useState(DEFAULT_AUTO_GAP)
-  useEffect(() => {
+  // Word list saves in flight, and when the list was last changed here. Like status writes: a read
+  // sent before a change must not undo it.
+  const wordSaving = useRef(0)
+  const wordChangedAt = useRef(0)
+  const wordsSynced = useRef(false)
+  // Reads the shared settings (gap and word list). Runs on open and whenever Realtime reports a change.
+  const loadShared = () => {
     readSetting(AUTO_GAP_KEY, DEFAULT_AUTO_GAP)
       .then(v => setAutoGapState(Number(v) || DEFAULT_AUTO_GAP))
       .catch(() => {})
+    const sentAt = Date.now()
+    readSetting(BAD_WORDS_KEY, null)
+      .then(saved => {
+        if (wordSaving.current || wordChangedAt.current >= sentAt) return
+        const first = !wordsSynced.current
+        wordsSynced.current = true
+        if (isWordChanges(saved)) {
+          setWordChanges(saved)
+          return
+        }
+        // No shared list yet: the first admin to open this version carries over this browser's changes.
+        const local = live.current.wordChanges
+        if (first && local && Object.keys(local).length) commitWords(local, null)
+      })
+      .catch(() => {})
+  }
+  useEffect(() => {
+    loadShared()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const setAutoGap = sec => {
     const before = autoGap
@@ -373,6 +427,22 @@ export default function useModeration({ lang, liveFeed }) {
       setAutoGapState(before)
       setToast({ id: null, prev: null, msg: pick(['Gagal menyimpan jeda. Coba lagi.', 'Could not save the gap. Try again.'], live.current.lang), color: '#BF0000' })
     })
+  }
+
+  // Saves the word list for every admin device. A failed save puts the earlier list back and says so.
+  const commitWords = (next, before = live.current.wordChanges) => {
+    setWordChanges(next)
+    wordSaving.current += 1
+    wordChangedAt.current = Date.now()
+    saveSetting(BAD_WORDS_KEY, next)
+      .catch(() => {
+        if (before) setWordChanges(before)
+        setToast({ id: null, prev: null, msg: pick(['Gagal menyimpan daftar kata. Coba lagi.', 'Could not save the word list. Try again.'], live.current.lang), color: '#BF0000' })
+      })
+      .finally(() => {
+        wordSaving.current -= 1
+        wordChangedAt.current = Date.now()
+      })
   }
 
   const toggleSetting = k => {
@@ -385,13 +455,13 @@ export default function useModeration({ lang, liveFeed }) {
   const addWord = () => {
     const w = wordIn.trim().toLowerCase().replace(/\s+/g, ' ')
     if (!w) return
-    setWordChanges(c => ({ ...c, [w]: wordLevel }))
+    commitWords({ ...live.current.wordChanges, [w]: wordLevel })
     setWordIn('')
   }
 
-  const removeWord = (_level, w) => setWordChanges(c => ({ ...c, [w]: 'off' }))
+  const removeWord = (_level, w) => commitWords({ ...live.current.wordChanges, [w]: 'off' })
 
-  const resetWords = () => setWordChanges({})
+  const resetWords = () => commitWords({})
 
   // Adds the typed event to the list and makes it the active one, which updates the QR.
   // A new event becomes active only when no event is active yet.

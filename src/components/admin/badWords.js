@@ -71,6 +71,13 @@ const RANK = { high: 3, medium: 2, low: 1 }
 
 // The admin's edits are kept as changes on top of the default list: { word: 'high' | 'medium' |
 // 'low' | 'off' }. New default words then still show up, and the admin's edits are never lost.
+// A saved change list: { word: level or 'off' }. Anything else (missing row, bad data) is ignored.
+export const isWordChanges = value =>
+  !!value &&
+  typeof value === 'object' &&
+  !Array.isArray(value) &&
+  Object.values(value).every(level => level === 'off' || LEVELS.includes(level))
+
 export function applyWordChanges(defaults, changes) {
   const levelOf = new Map()
   for (const level of LEVELS) for (const w of defaults[level]) if (!levelOf.has(w)) levelOf.set(w, level)

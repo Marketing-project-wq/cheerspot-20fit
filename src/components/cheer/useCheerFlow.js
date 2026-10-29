@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_SEC, pickMime, platformOf } from './format.js'
 import { submitCheer } from '../../lib/cheers.js'
+import { readSent, rememberSent } from './sentCheers.js'
 
 // Flow states: idle -> recording -> preview -> uploading -> success
 // Failures go to error (retry or auto-resume when mic access is granted).
@@ -9,6 +10,8 @@ export default function useCheerFlow({ lang = 'id' } = {}) {
   const [s, setS] = useState('idle')
   const [name, setName] = useState('')
   const [athlete, setAthlete] = useState('')
+  // Cheers sent from this phone in the last day, newest first. Their status shows on the page.
+  const [sent, setSent] = useState(readSent)
   const [left, setLeft] = useState(MAX_SEC)
   const [dur, setDur] = useState(MAX_SEC)
   const [prog, setProg] = useState(0)
@@ -387,7 +390,10 @@ export default function useCheerFlow({ lang = 'id' } = {}) {
         if (!blob) throw new Error('Recording not ready')
         return submitCheer({ blob, senderName: name, athleteName: athlete, durationSec: dur })
       })
-      .then(() => setUploadState('done'))
+      .then(id => {
+        setSent(rememberSent({ id, athlete: athlete.trim(), ts: Date.now() }))
+        setUploadState('done')
+      })
       .catch(() => setUploadState('error'))
   }
 
@@ -450,6 +456,7 @@ export default function useCheerFlow({ lang = 'id' } = {}) {
 
   return {
     s,
+    sent,
     name,
     setName,
     athlete,

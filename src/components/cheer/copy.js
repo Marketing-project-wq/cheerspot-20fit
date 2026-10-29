@@ -39,6 +39,19 @@ export const COPY = {
   ariaStop: { id: 'Stop rekam', en: 'Stop recording' },
   ariaPlay: { id: 'Putar rekaman', en: 'Play recording' },
   ariaLogo: { id: '20FIT Race Lab', en: '20FIT Race Lab' },
+  statusTitle: { id: 'STATUS CHEER KAMU', en: 'YOUR CHEER STATUS' },
+  statusFor: { id: 'Untuk', en: 'For' },
+  statusNote: { id: 'Status update otomatis, tidak perlu refresh.', en: 'Status updates by itself, no need to refresh.' },
+}
+
+// Status of a sent cheer, as the sender sees it.
+export const STATUS = {
+  checking: { id: 'Mengecek status…', en: 'Checking status…' },
+  pending: { id: 'Lagi dicek tim kami', en: 'Being checked by our team' },
+  approved: { id: 'Lolos! Lagi antre diputar DJ', en: 'Approved! Waiting for the DJ' },
+  played: { id: 'Sudah diputar di arena 🔊', en: 'Played in the arena 🔊' },
+  rejected: { id: 'Belum lolos pengecekan', en: "Didn't pass the check" },
+  missing: { id: 'Cheer tidak ditemukan', en: 'Cheer not found' },
 }
 
 export const PLATFORM_LABEL = {

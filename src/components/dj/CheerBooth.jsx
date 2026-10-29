@@ -81,6 +81,8 @@ export default function CheerBooth({ onLogout }) {
             onDelete={deleteItem}
             pinned={booth.pinned}
             onTogglePin={booth.togglePin}
+            autoPins={booth.autoPins}
+            onAutoPins={booth.setAutoPins}
           />
 
           <VolumePanel cheer={booth.cheerVolume} onCheer={booth.setCheerVolume} music={booth.musicVolume} onMusic={booth.setMusicVolume} />

@@ -5,6 +5,7 @@ import { Header, Hero } from '../components/cheer/Hero.jsx'
 import Form from '../components/cheer/Form.jsx'
 import { IdleStage, RecordingStage, PreviewStage, UploadingStage, ErrorStage } from '../components/cheer/Stages.jsx'
 import SuccessScreen from '../components/cheer/SuccessScreen.jsx'
+import CheerStatus from '../components/cheer/CheerStatus.jsx'
 import { COPY } from '../components/cheer/copy.js'
 import { ShieldIcon } from '../components/cheer/icons.jsx'
 import '../components/cheer/cheer.css'
@@ -19,7 +20,7 @@ export default function Cheer() {
   }, [])
 
   if (f.s === 'success') {
-    return <SuccessScreen lang={lang} athlete={f.athlete} onAgain={f.again} />
+    return <SuccessScreen lang={lang} athlete={f.athlete} sent={f.sent} onAgain={f.again} />
   }
 
   let stage
@@ -66,6 +67,7 @@ export default function Cheer() {
         hasError={!!f.err}
       />
       <div className="cz-stage">{stage}</div>
+      {f.s === 'idle' && <CheerStatus lang={lang} cheers={f.sent} />}
       <div className="cz-privacy">
         <ShieldIcon />
         <span>{COPY.privacy[lang]}</span>

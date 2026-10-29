@@ -5,6 +5,9 @@ import { supabase } from './supabase.js'
 export const AUTO_GAP_KEY = 'auto_gap_sec'
 export const AUTO_GAP_CHOICES = [30, 45, 60, 90, 120]
 export const DEFAULT_AUTO_GAP = 60
+// The superadmin's changes to the built-in moderation word list ({ word: 'high' | 'medium' | 'low' | 'off' }),
+// so every admin device flags transcripts the same way.
+export const BAD_WORDS_KEY = 'bad_words'
 
 export async function readSetting(key, fallback) {
   if (!supabase) return fallback

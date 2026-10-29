@@ -666,3 +666,66 @@
   text-underline-offset: 4px;
   cursor: pointer;
 }
+
+/* Status of cheers sent from this phone */
+.cz-status {
+  margin: 0 var(--cz-gutter) 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cz-status h2 { margin: 0 }
+.cz-status-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cz-status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #121211;
+  border: 1px solid #262624;
+}
+.cz-status-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #A3A39B;
+}
+.cz-status-row.is-pending .cz-status-dot,
+.cz-status-row.is-checking .cz-status-dot { background: #F5A524; animation: cz-blink 1.4s infinite }
+.cz-status-row.is-approved .cz-status-dot { background: #22C55E; animation: cz-blink 1.4s infinite }
+.cz-status-row.is-played .cz-status-dot { background: #22C55E }
+.cz-status-row.is-rejected .cz-status-dot,
+.cz-status-row.is-missing .cz-status-dot { background: #6B6B65 }
+.cz-status-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cz-status-for {
+  font-size: 13px;
+  color: #A3A39B;
+  overflow-wrap: anywhere;
+}
+.cz-status-for strong { color: #F4F4EF; font-weight: 800 }
+.cz-status-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #F4F4EF;
+}
+.cz-status-row.is-played .cz-status-label { color: #22C55E }
+.cz-status-note {
+  margin: 0;
+  font-size: 12px;
+  color: #6B6B65;
+}
+.cz-s-status { margin-top: 20px }

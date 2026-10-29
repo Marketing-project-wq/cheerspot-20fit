@@ -1,9 +1,12 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
 // Only cheers from the last 5 minutes can be transcribed. This keeps repeated calls from
-// spending the OpenRouter balance on old or made-up ids.
+// spending the transcription balance on old or made-up ids.
 const MAX_AGE_MS = 5 * 60 * 1000
 const MODEL = 'openai/whisper-1'
+// Groq runs Whisper much faster. Used when CHEERSPOT_GROQ_API_KEY is set; OpenRouter is the fallback.
+const GROQ_MODEL = 'whisper-large-v3-turbo'
+const GROQ_TIMEOUT_MS = 15000
 
 function toBase64(bytes: Uint8Array): string {
   let binary = ''
@@ -33,8 +36,9 @@ async function handle(req: Request): Promise<Response> {
   const { id } = await req.json().catch(() => ({ id: null }))
   if (typeof id !== 'string') return new Response('Bad request', { status: 400 })
 
+  const groqKey = Deno.env.get('CHEERSPOT_GROQ_API_KEY')
   const apiKey = Deno.env.get('CHEERSPOT_OPENROUTER_API_KEY')
-  if (!apiKey) return new Response('Transcription key is not set', { status: 500 })
+  if (!groqKey && !apiKey) return new Response('Transcription key is not set', { status: 500 })
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -58,24 +62,12 @@ async function handle(req: Request): Promise<Response> {
   if (downloadError || !file) return new Response('Audio not found', { status: 404 })
 
   const format = row.audio_path.split('.').pop() ?? 'webm'
-  const audio = toBase64(new Uint8Array(await file.arrayBuffer()))
+  const bytes = new Uint8Array(await file.arrayBuffer())
 
-  const res = await fetch('https://openrouter.ai/api/v1/audio/transcriptions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      language: 'id',
-      input_audio: { data: audio, format },
-    }),
-  })
-  if (!res.ok) return new Response('Transcription failed', { status: 502 })
-
-  const { text } = await res.json()
-  const transcript = typeof text === 'string' ? text.trim() : ''
+  let text = groqKey ? await viaGroq(groqKey, bytes, row.audio_path, file.type).catch(() => null) : null
+  if (text === null && apiKey) text = await viaOpenRouter(apiKey, bytes, format).catch(() => null)
+  if (text === null) return new Response('Transcription failed', { status: 502 })
+  const transcript = text.trim()
 
   const { error: updateError } = await supabase
     .from('cheerspot_cheers')
@@ -84,4 +76,42 @@ async function handle(req: Request): Promise<Response> {
   if (updateError) return new Response('Could not save transcript', { status: 500 })
 
   return Response.json({ ok: true })
+}
+
+// Groq takes the audio file as multipart form data. Returns the text, or null when it fails.
+async function viaGroq(key: string, bytes: Uint8Array, path: string, type: string): Promise<string | null> {
+  const form = new FormData()
+  // Groq reads the format from the file name, so keep the extension.
+  form.append('file', new Blob([bytes], { type: type || 'audio/webm' }), path.split('/').pop() ?? 'cheer.webm')
+  form.append('model', GROQ_MODEL)
+  form.append('language', 'id')
+  form.append('response_format', 'json')
+  form.append('temperature', '0')
+  const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}` },
+    body: form,
+    signal: AbortSignal.timeout(GROQ_TIMEOUT_MS),
+  })
+  if (!res.ok) return null
+  const { text } = await res.json()
+  return typeof text === 'string' ? text : null
+}
+
+async function viaOpenRouter(key: string, bytes: Uint8Array, format: string): Promise<string | null> {
+  const res = await fetch('https://openrouter.ai/api/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      language: 'id',
+      input_audio: { data: toBase64(bytes), format },
+    }),
+  })
+  if (!res.ok) return null
+  const { text } = await res.json()
+  return typeof text === 'string' ? text : null
 }
