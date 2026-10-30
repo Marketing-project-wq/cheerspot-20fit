@@ -90,7 +90,7 @@ export default function SuccessScreen({ lang, athlete, sent, onAgain }) {
       </div>
 
       <div className="cz-s-status">
-        <CheerStatus lang={lang} cheers={sent} limit={1} />
+        <CheerStatus lang={lang} cheers={sent} limit={1} compact />
       </div>
 
       <div className="cz-s-foot">

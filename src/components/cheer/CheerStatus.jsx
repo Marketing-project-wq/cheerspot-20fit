@@ -8,7 +8,8 @@ const POLL_MS = 5000
 const FINAL = new Set(['played', 'rejected', null])
 
 // Live status of cheers sent from this phone: { id, athlete, ts }[], newest first.
-export default function CheerStatus({ lang, cheers: all, limit = all.length, title = true }) {
+// compact: one card without the heading and the note, for the success screen.
+export default function CheerStatus({ lang, cheers: all, limit = all.length, compact = false }) {
   const cheers = useMemo(() => all.slice(0, limit), [all, limit])
   const [statuses, setStatuses] = useState({})
 
@@ -45,8 +46,8 @@ export default function CheerStatus({ lang, cheers: all, limit = all.length, tit
   if (!cheers.length) return null
 
   return (
-    <section className="cz-status" aria-live="polite">
-      {title && <h2 className="cz-field-label">{COPY.statusTitle[lang]}</h2>}
+    <section className={`cz-status${compact ? ' is-compact' : ''}`} aria-live="polite">
+      {!compact && <h2 className="cz-field-label">{COPY.statusTitle[lang]}</h2>}
       <ul className="cz-status-list">
         {cheers.map(c => {
           const key = c.id in statuses ? (statuses[c.id] ?? 'missing') : 'checking'
@@ -64,7 +65,7 @@ export default function CheerStatus({ lang, cheers: all, limit = all.length, tit
           )
         })}
       </ul>
-      <p className="cz-status-note">{COPY.statusNote[lang]}</p>
+      {!compact && <p className="cz-status-note">{COPY.statusNote[lang]}</p>}
     </section>
   )
 }

@@ -557,14 +557,15 @@
 }
 .cz-s-visual {
   position: relative;
-  height: 236px;
+  /* Sized so the whole success screen, status included, fits one phone screen without scrolling. */
+  height: 184px;
   flex: none;
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   background: radial-gradient(closest-side at 50% 50%, rgba(191, 0, 0, .14), rgba(191, 0, 0, 0));
 }
 .cz-s-fx { position: absolute; inset: 0; overflow: hidden; pointer-events: none }
 .cz-s-ring {
-  position: absolute; left: 50%; top: 50%; width: 150px; height: 150px; border-radius: 50%;
+  position: absolute; left: 50%; top: 50%; width: 124px; height: 124px; border-radius: 50%;
   border: 2.5px solid #BF0000;
   animation: cz-ring 2.4s ease-out infinite;
   opacity: 0;
@@ -575,7 +576,7 @@
   opacity: 0;
 }
 .cz-s-badge {
-  position: absolute; left: 50%; top: 50%; width: 128px; height: 128px; margin: -64px 0 0 -64px;
+  position: absolute; left: 50%; top: 50%; width: 108px; height: 108px; margin: -54px 0 0 -54px;
   border-radius: 50%;
   background: #BF0000;
   color: #FFFFFF;
@@ -595,7 +596,7 @@
   margin: 0;
   font-family: 'Barlow Condensed', sans-serif;
   font-weight: 800;
-  font-size: 44px;
+  font-size: 40px;
   line-height: .98;
   letter-spacing: -.005em;
   text-wrap: balance;
@@ -610,8 +611,8 @@
 }
 .cz-s-body {
   margin: 0;
-  font-size: 17px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.45;
   color: #D9D9D2;
   text-wrap: pretty;
   overflow-wrap: anywhere;
@@ -629,7 +630,7 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 20px var(--cz-gutter) 16px;
+  padding: 16px var(--cz-gutter) 12px;
   margin-top: auto;
 }
 .cz-s-cta {
@@ -728,4 +729,6 @@
   font-size: 12px;
   color: #6B6B65;
 }
-.cz-s-status { margin-top: 20px }
+.cz-s-status { margin-top: 18px }
+.cz-status.is-compact { margin-bottom: 0 }
+.cz-status.is-compact .cz-status-row { padding: 10px 14px }
