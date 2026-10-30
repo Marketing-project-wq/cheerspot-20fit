@@ -53,7 +53,7 @@ function Transport({ playing, shuffle, canTrack, hasTrack, onPrevious, onToggle,
   )
 }
 
-export default function MusicPlayer({ started, onToast }) {
+export default function MusicPlayer({ started, youtube, onToast }) {
   const [url, setUrl] = useState(() => readStored(PLAYLIST_KEY, ''))
   const [urlError, setUrlError] = useState('')
   const [searchText, setSearchText] = useState('')
@@ -77,9 +77,11 @@ export default function MusicPlayer({ started, onToast }) {
     toastRef.current = onToast
   }, [onToast])
 
-  // Players are created once the booth sound is on. Only one source plays at a time.
+  // The YouTube player is created as soon as its API has loaded, before the booth sound is on, so
+  // videos show right away. Only one source plays at a time.
+  const ytReady = youtube === 'ready' && !!window.YT?.Player
   useEffect(() => {
-    if (!started || !hostRef.current || !window.YT?.Player) return
+    if (!ytReady || !hostRef.current) return
     const source = createYouTubeSource(hostRef.current, {
       onChange: setYtInfo,
       onSkip: message => toastRef.current?.(message),
@@ -92,7 +94,7 @@ export default function MusicPlayer({ started, onToast }) {
       ytRef.current = null
       setYtInfo(EMPTY_YT)
     }
-  }, [started])
+  }, [ytReady])
 
   const disconnectLive = () => {
     const current = liveRef.current
@@ -133,8 +135,6 @@ export default function MusicPlayer({ started, onToast }) {
     if (next === 'live') ytRef.current?.pause()
   }
 
-  const ytReady = started && !!window.YT?.Player
-
   const loadResults = async (load, chipKey) => {
     setSearching(true)
     setSearchError('')
@@ -161,13 +161,13 @@ export default function MusicPlayer({ started, onToast }) {
     loadResults(item.q ? () => searchYouTube(item.q) : fetchTopMusic, item.key)
   }
 
-  // Like YouTube's home page: show videos as soon as the session starts, before any search.
+  // Like YouTube's home page: show videos as soon as the booth opens, before any search.
   const startGridLoaded = useRef(false)
   useEffect(() => {
-    if (!started || startGridLoaded.current) return
+    if (!ytReady || startGridLoaded.current) return
     startGridLoaded.current = true
     loadResults(fetchTopMusic, 'trending')
-  }, [started])
+  }, [ytReady])
 
   // Play a search result through the same path as a pasted link.
   const playResult = item => {
@@ -249,7 +249,7 @@ export default function MusicPlayer({ started, onToast }) {
           value={searchText}
           onChange={event => setSearchText(event.target.value)}
         />
-        <button type="submit" disabled={!searchText.trim() || searching || !started} aria-label="Search">
+        <button type="submit" disabled={!searchText.trim() || searching || !ytReady} aria-label="Search">
           {searching ? <span className="booth-ytsearch__spin" aria-hidden="true" /> : <Icon name="search" />}
         </button>
       </form>
@@ -303,7 +303,7 @@ export default function MusicPlayer({ started, onToast }) {
                 className={`booth-ytchip${chip === item.key ? ' is-on' : ''}`}
                 aria-pressed={chip === item.key}
                 onClick={() => pickChip(item)}
-                disabled={!started}
+                disabled={!ytReady}
               >
                 {item.label}
               </button>
@@ -371,7 +371,7 @@ export default function MusicPlayer({ started, onToast }) {
         {urlError && <p className="booth-error" role="alert">{urlError}</p>}
         {!ytReady && (
           <p className="booth-hint">
-            {started ? 'YouTube could not load. Check the connection and refresh the page.' : 'YouTube loads once the booth sound is on.'}
+            {youtube === 'failed' ? 'YouTube could not load. Check the connection and refresh the page.' : 'Loading YouTube…'}
           </p>
         )}
         {ytReady && !ytInfo.loaded && <p className="booth-hint">Pick a video above, or paste a link and press Load.</p>}

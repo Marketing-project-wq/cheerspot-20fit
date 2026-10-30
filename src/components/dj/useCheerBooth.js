@@ -222,11 +222,6 @@ export default function useCheerBooth() {
       return
     }
     setNeedsTap(false)
-    try {
-      await loadYouTubeApi()
-    } catch {
-      showToast('YouTube did not load. Live input still works.')
-    }
     setNextAt(0)
     startedAtRef.current = Date.now()
     setStarted(true)
@@ -235,6 +230,23 @@ export default function useCheerBooth() {
   useEffect(() => {
     startSession()
   }, [startSession])
+
+  // YouTube loads as soon as the booth opens, without waiting for a click: showing videos needs no
+  // sound. 'loading' | 'ready' | 'failed'.
+  const [youtube, setYoutube] = useState(() => (window.YT?.Player ? 'ready' : 'loading'))
+  useEffect(() => {
+    let alive = true
+    loadYouTubeApi()
+      .then(() => alive && setYoutube('ready'))
+      .catch(() => {
+        if (!alive) return
+        setYoutube('failed')
+        showToast('YouTube did not load. Live input still works.')
+      })
+    return () => {
+      alive = false
+    }
+  }, [showToast])
 
   useEffect(() => {
     if (!needsTap) return undefined
@@ -344,6 +356,7 @@ export default function useCheerBooth() {
 
   return {
     started,
+    youtube,
     mode,
     setMode,
     cheerVolume,

@@ -53,7 +53,7 @@ export default function CheerBooth({ onLogout }) {
 
       <div className="booth-body">
         <main className="booth-grid">
-          <MusicPlayer started={started} onToast={booth.showToast} />
+          <MusicPlayer started={started} youtube={booth.youtube} onToast={booth.showToast} />
 
           <CheerNowPlaying
             item={focusItem}
