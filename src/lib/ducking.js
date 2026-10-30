@@ -2,16 +2,18 @@
 // ducking state machine. Music sources (YouTube, live input) register an adapter with
 // { isPlaying(), getLevel(), setLevel(v), rampTo(v, ms) }. Levels are 0..1.
 
+// Gentle on purpose: the music sinks over 2.5 s, the cheer starts only once it is down, and the music
+// comes back slowly after a short pause, so a cheer never jumps in over a loud track.
 export const DEFAULT_DUCKING = {
-  duckLevel: 0.3,
-  fadeDownMs: 1000,
-  fadeUpMs: 2500,
-  delayBeforeUpMs: 1200,
+  duckLevel: 0.25,
+  fadeDownMs: 2500,
+  fadeUpMs: 3500,
+  delayBeforeUpMs: 1500,
 }
 
 const TICK_MS = 250
-// The cheer starts once the music is this far into its fade down, so there is no silent gap.
-const CHEER_OVERLAP = 0.6
+// A short breath between the music settling down and the voice starting.
+const CHEER_LEAD_MS = 300
 // Short fades on the cheer itself, so start, pause and skip never click.
 const CHEER_FADE_IN_S = 0.06
 const CHEER_FADE_OUT_S = 0.12
@@ -304,11 +306,12 @@ async function runQueue() {
         job.handlers.onError?.(err)
         continue
       }
-      // Start the cheer while the music is still fading down. The fade finishes underneath it.
-      const ducking = duckForCheer()
-      await Promise.race([ducking, delay(settings.fadeDownMs * CHEER_OVERLAP)])
+      // The music fades down fully first, then the cheer starts, so the voice never lands on a loud track.
+      // A cheer right after another (music already down) or with no music playing starts at once.
+      const wasDucked = state.ducked
+      await duckForCheer()
+      if (!wasDucked && state.ducked) await delay(CHEER_LEAD_MS)
       const reason = await playCheerAudio(job, buffer)
-      await ducking
       activeJob = null
       emit()
       job.handlers.onEnd?.(reason)
