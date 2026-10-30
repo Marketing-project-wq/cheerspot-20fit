@@ -12,7 +12,7 @@ import {
 } from './data.js'
 import { keepValue, readKept, readSaved, saveValue } from './storage.js'
 import { DEFAULT_WORD_LEVELS, LEVELS, applyWordChanges, isWordChanges, needsReview, scanWords } from './badWords.js'
-import { fetchRecentCheers, getAudioUrl, updateCheerStatus } from '../../lib/cheers.js'
+import { fetchRecentCheers, getAudioUrl, getAudioUrls, updateCheerStatus } from '../../lib/cheers.js'
 import { deleteCheer } from '../../lib/staff.js'
 import { AUTO_GAP_KEY, BAD_WORDS_KEY, DEFAULT_AUTO_GAP, EVENTS_KEY, readSetting, saveSetting } from '../../lib/settings.js'
 import { watchTables } from '../../lib/realtime.js'
@@ -26,6 +26,10 @@ const FAST_POLL_MS = 1000
 // Shared settings (gap, words, events) are re-read this often while Realtime is down.
 const SHARED_POLL_MS = 6000
 const NEW_MARK_MS = 9000
+// Voice notes the admin is likely to play next are fetched ahead, so Play starts at once.
+const PRELOAD_COUNT = 10
+// Signed links last 10 minutes; a cached one is replaced well before that.
+const AUDIO_URL_TTL_MS = 8 * 60 * 1000
 // Transcription runs right after a cheer is sent. Without a transcript after this long it most
 // likely failed; the cheer can then be judged by listening.
 const TRANSCRIBE_WAIT_MS = 2 * 60 * 1000
@@ -314,31 +318,74 @@ export default function useModeration({ lang, liveFeed }) {
     setFocus(id)
   }
 
-  useEffect(() => {
-    if (playId == null) return undefined
-    const t = setInterval(() => setPos(p => Math.round((p + 0.1) * 10) / 10), 100)
-    return () => clearInterval(t)
-  }, [playId])
+  // Voice notes ready to play, by audio path: { url, expires, audio }. The audio element is loaded
+  // ahead (preload), so pressing Play does not wait for a link and a download.
+  const audioCache = useRef(new Map())
+  const warmAudio = (path, url) => {
+    const audio = new Audio()
+    audio.preload = 'auto'
+    audio.src = url
+    const entry = { url, expires: Date.now() + AUDIO_URL_TTL_MS, audio }
+    audioCache.current.set(path, entry)
+    return entry
+  }
+  const cachedAudio = path => {
+    const entry = audioCache.current.get(path)
+    return entry && entry.expires > Date.now() ? entry : null
+  }
 
-  // Plays the real voice note through a short-lived link. The timer above keeps the progress bar moving.
+  // Preloads the newest cheers waiting for review (and the one in focus) with one link request.
+  useEffect(() => {
+    const cache = audioCache.current
+    const paths = new Set(items.map(x => x.audioPath).filter(Boolean))
+    for (const path of cache.keys()) if (!paths.has(path)) cache.delete(path)
+    const wanted = items
+      .filter(x => x.audioPath && (x.status === 'pending' || x.id === focus))
+      .slice(0, PRELOAD_COUNT)
+      .map(x => x.audioPath)
+      .filter(path => !cachedAudio(path))
+    if (!wanted.length) return
+    getAudioUrls(wanted)
+      .then(urls => Object.entries(urls).forEach(([path, url]) => !cachedAudio(path) && warmAudio(path, url)))
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, focus])
+
+  // Plays the real voice note. The progress bar follows the audio itself, so it starts when the sound
+  // starts and the end of the note is never cut off.
   const audioRef = useRef(null)
   useEffect(() => {
     if (playId == null) return undefined
     const it = items.find(x => x.id === playId)
-    if (!it || !it.audioPath) return undefined
+    if (!it) return undefined
+    // Demo items have no audio: the bar just runs for the item's length.
+    if (!it.audioPath) {
+      const t = setInterval(() => setPos(p => Math.round((p + 0.1) * 10) / 10), 100)
+      return () => clearInterval(t)
+    }
     let cancelled = false
-    getAudioUrl(it.audioPath)
-      .then(url => {
-        if (cancelled) return
-        const audio = new Audio(url)
-        audioRef.current = audio
-        audio.play().catch(() => {})
-      })
-      .catch(() => {})
+    let timer = null
+    const start = audio => {
+      if (cancelled) return
+      audioRef.current = audio
+      audio.currentTime = 0
+      audio.onended = () => !cancelled && stopPlay()
+      audio.play().catch(() => !cancelled && stopPlay())
+      timer = setInterval(() => setPos(Math.min(it.dur, Math.round(audio.currentTime * 10) / 10)), 100)
+    }
+    const ready = cachedAudio(it.audioPath)
+    if (ready) start(ready.audio)
+    else
+      getAudioUrl(it.audioPath)
+        .then(url => start(warmAudio(it.audioPath, url).audio))
+        .catch(() => !cancelled && stopPlay())
     return () => {
       cancelled = true
-      if (audioRef.current) {
-        audioRef.current.pause()
+      clearInterval(timer)
+      const audio = audioRef.current
+      if (audio) {
+        audio.onended = null
+        audio.pause()
         audioRef.current = null
       }
     }
@@ -346,10 +393,11 @@ export default function useModeration({ lang, liveFeed }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playId])
 
+  // Demo items stop at their length; real voice notes stop when the audio ends.
   useEffect(() => {
     if (playId == null) return
     const it = items.find(x => x.id === playId)
-    if (!it || pos >= it.dur) stopPlay()
+    if (!it || (!it.audioPath && pos >= it.dur)) stopPlay()
   }, [pos, playId, items])
 
   useEffect(() => {

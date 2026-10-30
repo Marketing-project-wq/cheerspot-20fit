@@ -71,6 +71,15 @@ export async function updateCheerStatus(id, status, reason = null) {
   if (error) throw error
 }
 
+// Staff only: short-lived links for several voice notes in one request. Returns { path: url }.
+export async function getAudioUrls(paths) {
+  if (!supabase) throw new Error('Supabase is not configured')
+  if (!paths.length) return {}
+  const { data, error } = await supabase.storage.from('cheerspot-audio').createSignedUrls(paths, 600)
+  if (error) throw error
+  return Object.fromEntries(data.filter(d => d.signedUrl && !d.error).map(d => [d.path, d.signedUrl]))
+}
+
 // Staff only: a short-lived link to play the recorded voice note.
 export async function getAudioUrl(path) {
   if (!supabase) throw new Error('Supabase is not configured')
