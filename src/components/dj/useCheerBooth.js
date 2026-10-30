@@ -72,6 +72,14 @@ export default function useCheerBooth() {
   // When each cheer last started in this session. AUTO replays the pinned cheer heard longest ago.
   const lastStartRef = useRef(new Map())
   const pinnedRef = useRef([])
+  // When each approved cheer first reached this booth. AUTO plays a cheer only after one full gap from
+  // then, so a cheer never plays the moment it arrives and the DJ sees it coming. Cheers already
+  // waiting when the booth opens count from the opening.
+  const arrivedRef = useRef(new Map())
+  const arrivedAt = id => {
+    if (!arrivedRef.current.has(id)) arrivedRef.current.set(id, Date.now())
+    return arrivedRef.current.get(id)
+  }
   const autoPinsRef = useRef(true)
   const itemsRef = useRef(items)
   const statusRef = useRef(status)
@@ -176,8 +184,9 @@ export default function useCheerBooth() {
     [showToast],
   )
 
-  // AUTO: when the gap has passed and nothing is playing, play the next approved cheer that is not already queued.
-  // With no approved cheer waiting, a pinned cheer plays instead (when Auto pins is on), the one heard longest ago first.
+  // AUTO: when the gap has passed and nothing is playing, play the next approved cheer that is not already
+  // queued, once it has waited one gap since it arrived. With no approved cheer waiting at all, a pinned
+  // cheer plays instead (when Auto pins is on), the one heard longest ago first.
   useEffect(() => {
     if (!started) return undefined
     const timer = setInterval(() => {
@@ -190,7 +199,7 @@ export default function useCheerBooth() {
       const usable = item => !s.queued.includes(item.id) && !failedIds.current.has(item.id)
       const next = itemsRef.current.find(item => item.status === 'approved' && usable(item))
       if (next) {
-        playItem(next)
+        if (t >= arrivedAt(next.id) + gapRef.current * 1000) playItem(next)
         return
       }
       if (!autoPinsRef.current || t < startedAtRef.current + gapRef.current * 1000) return
@@ -309,12 +318,21 @@ export default function useCheerBooth() {
         countdown = left > 0 ? `Queue is empty. Pinned cheer in ${formatTime(left)}` : 'Queue is empty. Pinned cheer starting'
       }
     } else if (!status.cheerId) {
-      const left = Math.ceil((nextAt - now) / 1000)
+      const next = approved.find(item => !status.queued.includes(item.id) && !failedIds.current.has(item.id))
+      const readyAt = Math.max(nextAt, next ? arrivedAt(next.id) + gapRef.current * 1000 : 0)
+      const left = Math.ceil((readyAt - now) / 1000)
       countdown = left > 0 ? `Next cheer in ${formatTime(left)}` : 'Next cheer starting'
     }
   } else if (!status.cheerId) {
     countdown = 'Manual mode: press Play to start a cheer'
   }
+
+  useEffect(() => {
+    const ids = new Set(items.filter(item => item.status === 'approved').map(item => item.id))
+    ids.forEach(arrivedAt)
+    for (const id of arrivedRef.current.keys()) if (!ids.has(id)) arrivedRef.current.delete(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items])
 
   // Fetch the next two cheers' audio in the background, so they start without a wait.
   useEffect(() => {
