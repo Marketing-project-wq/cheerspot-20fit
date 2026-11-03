@@ -61,6 +61,26 @@ export async function takeHandoff() {
   return !error
 }
 
+// Sign-in link from racelabtiming.20fit.id (see supabase/functions/cheerspot-sso): /admin#sso=<token>.
+// Redeems the one-time token for a session and removes it from the address bar. The session ends when
+// the tab closes. Resolves to 'none' (no link), 'ok' or 'failed' (used or expired link). Runs once per
+// page load, so a second caller (React runs effects twice in development) gets the same answer.
+let ssoResult = null
+export function takeSsoLink() {
+  if (!ssoResult) ssoResult = redeemSsoLink()
+  return ssoResult
+}
+
+async function redeemSsoLink() {
+  const match = window.location.hash.match(/^#sso=([^&]+)/)
+  if (!match) return 'none'
+  history.replaceState(null, '', window.location.pathname + window.location.search)
+  if (!supabase) return 'failed'
+  setRememberSession(false)
+  const { error } = await supabase.auth.verifyOtp({ token_hash: decodeURIComponent(match[1]), type: 'magiclink' })
+  return error ? 'failed' : 'ok'
+}
+
 // Ends only this browser's session for this area. The default (global) would also sign the account
 // out of /admin or /dj in another tab and on every other device.
 export async function signOut() {

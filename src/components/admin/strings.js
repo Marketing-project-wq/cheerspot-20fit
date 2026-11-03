@@ -19,6 +19,7 @@ const COPY = {
   errEmpty: ['Isi username dan kata sandi dulu.', 'Enter your username and password.'],
   errEmail: ['Format email belum benar.', 'That email doesn’t look right.'],
   errWrong: ['Username atau kata sandi salah. Coba lagi.', 'Wrong username or password. Try again.'],
+  ssoFailed: ['Link masuk dari Race Lab Timing sudah dipakai atau kedaluwarsa. Klik lagi tombol CheerSpot di sana, atau masuk di bawah.', 'The sign-in link from Race Lab Timing was already used or has expired. Click the CheerSpot button there again, or sign in below.'],
   forgotInfo: ['Hubungi Superadmin event untuk reset kata sandi.', 'Contact the event Superadmin to reset your password.'],
 
   // Moderation shell

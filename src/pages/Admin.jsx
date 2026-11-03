@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import AdminLogin from '../components/admin/AdminLogin.jsx'
 import ModerationDashboard from '../components/admin/ModerationDashboard.jsx'
-import { getSession, handOffToDj, onSessionChange, signOut, staffRole } from '../lib/auth.js'
+import { getSession, handOffToDj, onSessionChange, signOut, staffRole, takeSsoLink } from '../lib/auth.js'
 import '../components/admin/admin.css'
 
 export default function Admin() {
   // undefined = still checking the saved session, null = signed out, object = staff session.
   const [role, setRole] = useState(undefined)
+  // True when a sign-in link from racelabtiming was already used or expired.
+  const [ssoFailed, setSsoFailed] = useState(false)
 
   useEffect(() => {
     document.title = 'Admin · CheerSpot'
@@ -14,15 +16,29 @@ export default function Admin() {
 
   useEffect(() => {
     let alive = true
-    // A broken saved session counts as signed out, so the page never stays blank.
-    getSession()
+    // Session events count only after the first check, so the login page does not flash while a
+    // sign-in link is being redeemed.
+    let ready = false
+    // A sign-in link is redeemed first. A broken saved session counts as signed out, so the page
+    // never stays blank.
+    takeSsoLink()
+      .catch(() => 'failed')
+      .then(result => {
+        if (alive && result === 'failed') setSsoFailed(true)
+        return getSession()
+      })
       .then(session => {
         if (alive) setRole(staffRole(session))
       })
       .catch(() => {
         if (alive) setRole(null)
       })
-    const unsubscribe = onSessionChange(session => setRole(staffRole(session)))
+      .finally(() => {
+        ready = true
+      })
+    const unsubscribe = onSessionChange(session => {
+      if (ready) setRole(staffRole(session))
+    })
     return () => {
       alive = false
       unsubscribe()
@@ -50,7 +66,7 @@ export default function Admin() {
       {role ? (
         <ModerationDashboard adminName="Admin 20FIT" onLogout={handleLogout} />
       ) : (
-        <AdminLogin onSuccess={handleLogin} />
+        <AdminLogin onSuccess={handleLogin} notice={ssoFailed ? 'ssoFailed' : null} />
       )}
     </div>
   )
