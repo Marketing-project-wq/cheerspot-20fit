@@ -31,10 +31,17 @@ function sameKey(a: string, b: string) {
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return fail(405, 'Method not allowed')
 
-  const key = Deno.env.get('CHEERSPOT_SSO_KEY') ?? ''
-  const userId = Deno.env.get('CHEERSPOT_SSO_USER_ID') ?? ''
+  // Spaces, line breaks and quotes pasted along with a secret are ignored.
+  const clean = (value: string | null | undefined) => (value ?? '').trim().replace(/^["']|["']$/g, '').trim()
+  const key = clean(Deno.env.get('CHEERSPOT_SSO_KEY'))
+  const userId = clean(Deno.env.get('CHEERSPOT_SSO_USER_ID'))
   if (key.length < MIN_KEY || !userId) return fail(503, 'Not configured')
-  if (!sameKey(req.headers.get('x-cheerspot-sso-key') ?? '', key)) return fail(401, 'Invalid key')
+  const sent = clean(req.headers.get('x-cheerspot-sso-key'))
+  if (!sameKey(sent, key)) {
+    // Lengths only, never the values: tells a mistyped secret from a wrong key.
+    console.log(`cheerspot-sso: key mismatch (sent ${sent.length} chars, stored ${key.length} chars)`)
+    return fail(401, 'Invalid key')
+  }
 
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
     auth: { persistSession: false, autoRefreshToken: false },
