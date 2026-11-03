@@ -901,7 +901,8 @@
   color: var(--muted);
 }
 
-.booth-pin.is-on {
+.booth-pin.is-on,
+.booth-history__actions .booth-btn.is-on {
   border-color: var(--accent);
   background: rgba(220, 38, 38, 0.15);
   color: var(--accent-text);

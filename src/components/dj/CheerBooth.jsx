@@ -70,7 +70,8 @@ export default function CheerBooth({ onLogout }) {
             queuedIds={queuedIds}
             activeId={status.cheerId}
             onPlayNow={playItem}
-            onReplay={playItem}
+            onReplay={booth.selectReplay}
+            replayId={booth.replayId}
             onMoveUp={moveUp}
             onMoveDown={moveDown}
             onReorder={reorder}
