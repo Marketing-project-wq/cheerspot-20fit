@@ -1,18 +1,4 @@
 /* Home page. Builds on the Send a Cheer styles (.cz-app) so both pages look the same. */
-.cz-lang {
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 1px solid #333330;
-  background: transparent;
-  color: #F4F4EF;
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: .08em;
-  cursor: pointer;
-}
-
 .cz-l-cta-wrap {
   padding: 20px var(--cz-gutter) 24px;
   display: flex;
