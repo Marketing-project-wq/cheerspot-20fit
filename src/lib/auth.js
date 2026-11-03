@@ -1,4 +1,4 @@
-import { forgetLocalSession, setRememberSession, supabase } from './supabase.js'
+import { forgetLocalSession, getRememberSession, setRememberSession, supabase } from './supabase.js'
 
 // Staff roles are set in app_metadata from the Supabase dashboard. Users cannot change them.
 const STAFF_ROLES = ['superadmin', 'admin']
@@ -76,8 +76,14 @@ async function redeemSsoLink() {
   if (!match) return 'none'
   history.replaceState(null, '', window.location.pathname + window.location.search)
   if (!supabase) return 'failed'
+  // Let the client finish loading any saved session first. Otherwise a failed refresh of an old
+  // session can clear the new one right after it is stored (same storage key).
+  await supabase.auth.getSession().catch(() => null)
+  // The new session is kept for this tab only. A failed link leaves the existing choice as it was.
+  const remembered = getRememberSession()
   setRememberSession(false)
   const { error } = await supabase.auth.verifyOtp({ token_hash: decodeURIComponent(match[1]), type: 'magiclink' })
+  if (error) setRememberSession(remembered)
   return error ? 'failed' : 'ok'
 }
 

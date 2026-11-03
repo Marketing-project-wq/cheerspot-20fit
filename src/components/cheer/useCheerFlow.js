@@ -250,6 +250,8 @@ export default function useCheerFlow({ lang = 'id' } = {}) {
           if (e.data && e.data.size) chunksRef.current.push(e.data)
         }
         rec.onstop = () => {
+          // A late stop from an earlier take (Safari) must not overwrite the current take's audio.
+          if (recRef.current !== rec) return
           const type = rec.mimeType || mime || 'audio/mp4'
           const blob = new Blob(chunksRef.current, { type })
           blobRef.current = blob

@@ -32,6 +32,14 @@ export function setRememberSession(remember) {
   }
 }
 
+export function getRememberSession() {
+  try {
+    return localStorage.getItem(REMEMBER_KEY) !== '0'
+  } catch {
+    return true
+  }
+}
+
 const sessionStore = {
   getItem(key) {
     try {
@@ -61,7 +69,7 @@ const sessionStore = {
 
 // The crowd pages (/ and /cheer) never use a staff session, even when staff are signed in to /admin
 // in the same browser: cheers must be sent as an anonymous spectator, the only role allowed to add one.
-const PUBLIC_PAGE = typeof window !== 'undefined' && /^\/(cheer\/?)?$/.test(window.location.pathname)
+const PUBLIC_PAGE = typeof window !== 'undefined' && /^\/(cheer\/?)?$/i.test(window.location.pathname)
 const authOptions = PUBLIC_PAGE
   ? { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'cheerspot-auth-public' }
   : { storage: sessionStore, storageKey: STORAGE_KEY }
