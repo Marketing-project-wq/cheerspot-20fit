@@ -356,12 +356,13 @@ export default function useCheerFlow({ lang = 'id' } = {}) {
     setPos(p)
   }
 
+  // Re-record goes back to the RECORD button; recording starts only when it is tapped again.
   const redo = () => {
-    if (audioRef.current) audioRef.current.pause()
-    setPlaying(false)
-    setPos(0)
+    dropAudio()
+    blobRef.current = null
+    setUrl(null)
     setHeard(false)
-    begin()
+    go('idle')
   }
 
   // Resolves with the current take's audio, or null if it is not ready within 4 seconds.

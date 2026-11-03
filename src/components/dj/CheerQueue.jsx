@@ -25,7 +25,6 @@ export default function CheerQueue({
   activeId,
   onPlayNow,
   onReplay,
-  replayId,
   onMoveUp,
   onMoveDown,
   onReorder,
@@ -223,14 +222,8 @@ export default function CheerQueue({
                   {item.transcript && <p className="booth-queue__text booth-history__text">{item.transcript}</p>}
                 </div>
                 <div className="booth-history__actions">
-                  <button
-                    type="button"
-                    className={`booth-btn${item.id === replayId ? ' is-on' : ''}`}
-                    onClick={() => onReplay(item)}
-                    disabled={item.id === activeId}
-                    aria-pressed={item.id === replayId}
-                  >
-                    {item.id === replayId ? 'Ready' : 'Replay'}
+                  <button type="button" className="booth-btn" onClick={() => onReplay(item)} disabled={item.id === activeId}>
+                    Replay
                   </button>
                   <PinButton item={item} pinned={pinnedIds.has(item.id)} onToggle={onTogglePin} />
                   <button

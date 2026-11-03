@@ -292,20 +292,9 @@ export default function useCheerBooth() {
     autoPinsRef.current = autoPins
   })
 
-  // Replay from the Played list only loads the cheer into Now playing; the DJ presses Play to hear it.
-  const [replayId, setReplayId] = useState(null)
-  const selectReplay = item => {
-    setReplayId(item.id)
-    showToast(`${item.athlete_name} is ready. Press Play to replay it.`)
-  }
-  useEffect(() => {
-    if (replayId && status.cheerId === replayId) setReplayId(null)
-  }, [replayId, status.cheerId])
-
   const approved = items.filter(item => item.status === 'approved')
   const focusItem =
     items.find(item => item.id === status.cheerId) ||
-    items.find(item => item.id === replayId) ||
     items.find(item => item.id === lastPlayedId) ||
     approved[0] ||
     null
@@ -316,11 +305,9 @@ export default function useCheerBooth() {
       ? status.paused
         ? 'Paused'
         : 'Now playing'
-      : focusItem.id === replayId
-        ? 'Replay: press Play'
-        : focusItem.status === 'played'
-          ? 'Last played'
-          : 'Up next'
+      : focusItem.status === 'played'
+        ? 'Last played'
+        : 'Up next'
 
   let countdown = null
   if (mode === 'auto') {
@@ -407,8 +394,6 @@ export default function useCheerBooth() {
     playItem,
     togglePlayPause,
     replayFocus,
-    replayId,
-    selectReplay,
     skip: skipCheer,
     deleteItem,
     pinned,
