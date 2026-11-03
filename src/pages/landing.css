@@ -1,0 +1,75 @@
+/* Home page. Builds on the Send a Cheer styles (.cz-app) so both pages look the same. */
+.cz-lang {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #333330;
+  background: transparent;
+  color: #F4F4EF;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+
+.cz-l-cta-wrap {
+  padding: 20px var(--cz-gutter) 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cz-l-cta { text-decoration: none; box-sizing: border-box }
+.cz-l-note { margin: 0; text-align: center; font-size: 13px; color: #A3A39B }
+
+.cz-l-how { padding: 0 var(--cz-gutter) 20px }
+.cz-l-how-title {
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  color: #C9C9C2;
+}
+.cz-l-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px }
+.cz-l-step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: 14px;
+  background: #121211;
+  border: 1px solid #222220;
+}
+.cz-l-num {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-style: italic;
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1;
+  color: #FF4545;
+  flex: none;
+  min-width: 30px;
+}
+.cz-l-step-title {
+  margin: 0 0 4px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+.cz-l-step-body { margin: 0; font-size: 14px; line-height: 1.45; color: #A3A39B }
+
+.cz-l-footer {
+  margin: auto 0 0;
+  padding: 0 var(--cz-gutter) 20px;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: .1em;
+  color: #6B6B65;
+}
