@@ -59,6 +59,12 @@ const sessionStore = {
   },
 }
 
+// The crowd pages (/ and /cheer) never use a staff session, even when staff are signed in to /admin
+// in the same browser: cheers must be sent as an anonymous spectator, the only role allowed to add one.
+const PUBLIC_PAGE = typeof window !== 'undefined' && /^\/(cheer\/?)?$/.test(window.location.pathname)
+const authOptions = PUBLIC_PAGE
+  ? { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'cheerspot-auth-public' }
+  : { storage: sessionStore, storageKey: STORAGE_KEY }
+
 // createClient throws on empty values, so export null instead and let callers check.
-export const supabase =
-  url && anonKey ? createClient(url, anonKey, { auth: { storage: sessionStore, storageKey: STORAGE_KEY } }) : null
+export const supabase = url && anonKey ? createClient(url, anonKey, { auth: authOptions }) : null
