@@ -43,8 +43,9 @@ export default function AdminLogin({ onSuccess, copy, rememberDefault = true, no
         return fail('errWrong')
       }
       onSuccess(role)
-    } catch {
-      fail('errWrong')
+    } catch (error) {
+      // Too many attempts from this network is not a wrong password; say so, or people keep retrying.
+      fail(error?.status === 429 ? 'errBusy' : 'errWrong')
     }
   }
 

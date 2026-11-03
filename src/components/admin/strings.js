@@ -18,6 +18,7 @@ const COPY = {
   secure: ['Sesi otomatis berakhir setelah 12 jam tidak aktif.', 'Sessions end automatically after 12 hours of inactivity.'],
   errEmpty: ['Isi username dan kata sandi dulu.', 'Enter your username and password.'],
   errEmail: ['Format email belum benar.', 'That email doesn’t look right.'],
+  errBusy: ['Terlalu banyak percobaan masuk dari jaringan ini. Tunggu 5 menit, lalu coba lagi.', 'Too many sign-in attempts from this network. Wait 5 minutes, then try again.'],
   errWrong: ['Username atau kata sandi salah. Coba lagi.', 'Wrong username or password. Try again.'],
   ssoFailed: ['Link masuk dari Race Lab Timing sudah dipakai atau kedaluwarsa. Klik lagi tombol CheerSpot di sana, atau masuk di bawah.', 'The sign-in link from Race Lab Timing was already used or has expired. Click the CheerSpot button there again, or sign in below.'],
   forgotInfo: ['Hubungi Superadmin event untuk reset kata sandi.', 'Contact the event Superadmin to reset your password.'],
