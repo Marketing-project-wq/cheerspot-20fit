@@ -386,7 +386,7 @@ Kontrak ini yang berlaku untuk versi 1 (macOS). Booth sudah mengimplementasikann
 | Booth → App | `send_value` | `value` (0–127) | Tombol "Kirim" di Kalibrasi |
 | App → Booth | `welcome` | `appVersion?` | Balasan `hello` |
 | App → Booth | `ducked` | `id`, `skipped`, `reason?` | Fade turun selesai. `id` sama dengan `duck` |
-| App → Booth | `restored` | `id`, `skipped`, `reason?` | Fade naik selesai. `id` sama dengan `restore` |
+| App → Booth | `restored` | `id`, `skipped`, `reason?` | Fade naik selesai. `id` sama dengan `restore`. **Tanpa `id`** jika app me-restore sendiri (fail-safe), dengan `reason` `failsafe_booth_silent`, `failsafe_realtime_disconnected`, atau `failsafe_max_duck` |
 | App → Booth | `status` | `ready`, `realtime`, `midiReady`, `ducked`, `level`, `ccValue`, `config`, `pairCode`, `appVersion` | Setiap 5 detik, dan sebaiknya juga langsung setelah `hello`/`ping` |
 | App → Booth | `error` | `code`, `message` | Kapan saja. Booth menampilkannya di panel selama 60 detik |
 
@@ -396,6 +396,9 @@ Kontrak ini yang berlaku untuk versi 1 (macOS). Booth sudah mengimplementasikann
 - **Menunggu balasan:** cheer pertama dalam satu rangkaian menunggu `ducked` dengan `id` yang sama, paling lama `fadeMs + 1.500 ms`. Setelah itu cheer tetap diputar. `duck` ulang (cheer berikutnya saat musik sudah kecil, atau kirim ulang 20 detik) dikirim dengan `fadeMs: 0` dan **tidak** ditunggu.
 - **Kirim ulang 20 detik** hanya berjalan selama ada cheer yang sedang diputar atau di-pause. Begitu cheer selesai, kiriman ulang berhenti. Tidak ada jalur di mana booth terus mengirim `duck` tanpa cheer aktif, jadi batas 45 detik di app tetap menjadi pengaman.
 - **Kapan app dianggap aktif:** `status` terakhir diterima maksimal 12 detik lalu **dan** `status.ready === true`. Kalau tidak, booth tidak mengirim `duck`/`restore` untuk cheer dan memutar cheer seperti biasa (YouTube, folder, dan live input tetap dikecilkan oleh booth sendiri).
+- **Fail-safe dari app:** `restored` tanpa `id` (atau dengan reason `failsafe_*`) membuat booth berhenti menganggap app sedang duck. Cheer berikutnya mengirim `duck` penuh dan **menunggu** `ducked`, dan booth tidak mengirim `restore` untuk app. Panel menampilkan "Ducker menaikkan musik otomatis (<alasan>)" selama 10 detik.
+- **Balasan `skipped: true`:** reason `already_ducked` atau `in_progress` dianggap berhasil. Reason lain pada `duck` berarti musik tidak turun, jadi tidak dihitung sebagai duck (dicatat sebagai warning). Kalau tidak ada balasan sampai batas waktu, status tidak diubah.
+- **`midi_not_ready`** (sebagai `error`, atau reason pada `skipped`): app dianggap tidak siap sampai `status` berikutnya. Chip menjadi kuning, duck yang sedang ditunggu langsung dilepas, dan cheer tetap diputar tanpa menunggu app.
 - **Semua sumber bersamaan:** sumber musik booth dan app dikecilkan serta dinaikkan bersamaan.
 - **Pill header** tidak menghitung app sebagai musik. Pill tetap "Standby" kalau booth sendiri tidak memutar musik.
 - **Chip status di panel:** hijau "Ducker: tersambung" (`ready`), kuning "Ducker: MIDI belum siap" (`status` ada tapi `ready` false), abu-abu "Ducker: offline" (belum tersambung, atau tidak ada `status` lebih dari 12 detik).
