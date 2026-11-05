@@ -3,6 +3,7 @@ import { COPY, SUCCESS_VARIANTS } from './copy.js'
 import { ButtonMicIcon, VariantIcon } from './icons.jsx'
 import { LOGO_URL } from '../../lib/brand.js'
 import CheerStatus from './CheerStatus.jsx'
+import { cameFromApp } from '../../lib/inApp.js'
 
 const FX_COLORS = ['#BF0000', '#FFFFFF', '#FF4545', '#FFFFFF', '#BF0000']
 
@@ -88,6 +89,8 @@ export default function SuccessScreen({ lang, athlete, sent, onAgain }) {
           ))}
         </p>
       </div>
+
+      {cameFromApp() && <p className="cz-s-back-app">{COPY.backToApp[lang]}</p>}
 
       <div className="cz-s-status">
         <CheerStatus lang={lang} cheers={sent} limit={1} compact />

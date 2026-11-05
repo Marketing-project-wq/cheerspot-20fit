@@ -654,6 +654,15 @@
   gap: 10px;
 }
 .cz-s-cta:active { transform: scale(.98) }
+/* In the my20fit app: link that opens recording in the phone's browser, and the note after sending there */
+.cz-inapp-cta { text-decoration: none; box-sizing: border-box }
+.cz-inapp-note { text-align: center }
+.cz-s-back-app {
+  margin: 12px var(--cz-gutter) 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #A3A39B;
+}
 .cz-s-home {
   height: 44px;
   padding: 0 12px;

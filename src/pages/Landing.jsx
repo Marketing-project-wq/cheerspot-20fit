@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { LOGO_URL } from '../lib/brand.js'
+import { browserUrl, isInApp } from '../lib/inApp.js'
 import { Hero } from '../components/cheer/Hero.jsx'
 import { COPY } from '../components/cheer/copy.js'
 import { ShieldIcon } from '../components/cheer/icons.jsx'
@@ -33,6 +34,7 @@ const L = {
 export default function Landing() {
   // English only on the home page, so there is no language switch.
   const lang = 'en'
+  const inApp = isInApp()
 
   useEffect(() => {
     document.title = 'CheerSpot by 20FIT'
@@ -47,11 +49,20 @@ export default function Landing() {
       <Hero lang={lang} />
 
       <div className="cz-l-cta-wrap">
-        <Link to="/cheer" className="cz-s-cta cz-l-cta">
-          {L.cta}
-          <span aria-hidden="true">→</span>
-        </Link>
-        <p className="cz-l-note">{L.ctaNote}</p>
+        {inApp ? (
+          // Inside the my20fit app: a plain same-tab link to another host, which the app opens
+          // in the phone's browser, where the mic works. No target="_blank" (broken in the iOS webview).
+          <a href={browserUrl('/cheer')} className="cz-s-cta cz-l-cta">
+            {L.cta}
+            <span aria-hidden="true">→</span>
+          </a>
+        ) : (
+          <Link to="/cheer" className="cz-s-cta cz-l-cta">
+            {L.cta}
+            <span aria-hidden="true">→</span>
+          </Link>
+        )}
+        <p className="cz-l-note">{inApp ? COPY.inAppNote[lang] : L.ctaNote}</p>
       </div>
 
       <section className="cz-l-how" aria-labelledby="cz-l-how-title">
