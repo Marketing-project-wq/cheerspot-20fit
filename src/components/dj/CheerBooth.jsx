@@ -1,6 +1,7 @@
 import { LOGO_ALT, LOGO_URL } from '../../lib/brand.js'
 import CheerNowPlaying from './CheerNowPlaying.jsx'
 import CheerQueue from './CheerQueue.jsx'
+import DuckerPanel from './DuckerPanel.jsx'
 import MusicPlayer from './MusicPlayer.jsx'
 import useCheerBooth from './useCheerBooth.js'
 import VolumePanel from './VolumePanel.jsx'
@@ -82,6 +83,8 @@ export default function CheerBooth({ onLogout }) {
           />
 
           <VolumePanel cheer={booth.cheerVolume} onCheer={booth.setCheerVolume} music={booth.musicVolume} onMusic={booth.setMusicVolume} />
+
+          <DuckerPanel />
         </main>
       </div>
 

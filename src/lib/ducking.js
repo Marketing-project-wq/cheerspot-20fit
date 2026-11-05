@@ -1,6 +1,9 @@
 // Audio engine for the booth: one shared AudioContext, the cheer chain, the DJ live input, and the
 // ducking state machine. Music sources (YouTube, a music folder, live input) register an adapter with
 // { isPlaying(), getLevel(), setLevel(v), rampTo(v, ms) }. Levels are 0..1.
+// An `external` adapter (the CheerSpot Ducker app on the DJ's laptop) also has hold(level) and
+// holdEveryMs: it controls volume outside this page, takes the duck level as is, and is not counted
+// as booth music for the status pill.
 
 // Gentle on purpose: the music sinks over 2.5 s, the cheer starts only once it is down, and the music
 // comes back slowly after a short pause, so a cheer never jumps in over a loud track.
@@ -32,7 +35,10 @@ let settings = { ...DEFAULT_DUCKING }
 let cheerVolume = 1
 let musicVolume = 1
 const sources = {}
-let duckedMusic = null
+// Every source that was playing when the music went down. All of them come back up together.
+let duckedSources = []
+// Re-sends the duck to external sources while a cheer plays or is paused (see startHold).
+let holdTimer = null
 
 const pending = []
 let running = false
@@ -84,6 +90,20 @@ export function stopAudio() {
 
 export function setDuckingSettings(next) {
   settings = { ...settings, ...next }
+}
+
+export function getDuckingSettings() {
+  return { ...settings }
+}
+
+// A source turned its music back up by itself (the Ducker app's fail-safe), or never went down.
+// It is no longer counted as ducked: the next cheer ducks it again in full and waits for it, and no
+// restore is sent for it. With nothing else down, the booth is no longer ducked either.
+export function markSourceRestored(source) {
+  if (!source || !duckedSources.includes(source)) return
+  duckedSources = duckedSources.filter(item => item !== source)
+  if (!duckedSources.length) state.ducked = false
+  emit()
 }
 
 // Sets the cheer level only; music has its own volume.
@@ -259,17 +279,33 @@ function duckedLevel() {
   return Math.min(full, Math.max(settings.duckLevel * full, DUCK_FLOOR))
 }
 
-function currentMusic() {
-  return Object.values(sources).find(source => source && source.isPlaying()) || null
+// Every source that is playing now, booth music and external alike.
+function activeSources() {
+  return Object.values(sources).filter(source => source && source.isPlaying())
+}
+
+// Music the booth itself plays (YouTube, folder, live input). Drives the status pill.
+function boothMusicPlaying() {
+  return activeSources().some(source => !source.external)
+}
+
+// Where a source goes when ducked or restored. External sources take the duck level as is; their
+// full level is the app's own normal value, sent as 1. Booth sources follow the music volume.
+function duckTarget(source) {
+  return source.external ? clamp01(settings.duckLevel) : duckedLevel()
+}
+
+function fullTarget(source) {
+  return source.external ? 1 : fullLevel()
 }
 
 // Pushes the right level to every source. A ducked source follows the duck target or the full level.
 function applyLevels() {
   for (const source of Object.values(sources)) {
     if (!source) continue
-    let level = fullLevel()
-    if (state.ducked && source === duckedMusic) {
-      level = state.phase === 'restoring' ? fullLevel() : duckedLevel()
+    let level = fullTarget(source)
+    if (state.ducked && duckedSources.includes(source)) {
+      level = state.phase === 'restoring' ? fullTarget(source) : duckTarget(source)
     }
     source.setLevel(level)
   }
@@ -346,29 +382,64 @@ function waitForPending(ms) {
 }
 
 async function duckForCheer() {
-  if (state.ducked) return
-  const music = currentMusic()
+  if (state.ducked) {
+    // Already down from the cheer before. External sources get a fresh duck so the app's own time
+    // limit starts again; nothing waits for it. A source that started playing since then goes down too.
+    // A source that is up (started since, or restored itself) is ducked in full and waited for.
+    holdExternal()
+    const fresh = activeSources().filter(source => !duckedSources.includes(source))
+    if (!fresh.length) return
+    duckedSources = [...duckedSources, ...fresh]
+    await Promise.all(fresh.map(source => rampOrSet(source, duckTarget(source), settings.fadeDownMs)))
+    return
+  }
+  const music = activeSources()
   // Paused or no music: play the cheer without ducking.
-  if (!music) return
-  duckedMusic = music
+  if (!music.length) return
+  duckedSources = music
   state.ducked = true
   setPhase('ducking')
-  await rampOrSet(music, duckedLevel(), settings.fadeDownMs)
+  await Promise.all(music.map(source => rampOrSet(source, duckTarget(source), settings.fadeDownMs)))
 }
 
 async function restoreMusic() {
-  const music = duckedMusic
+  const music = duckedSources
   setPhase('restoring')
-  if (music) await rampOrSet(music, fullLevel(), settings.fadeUpMs)
+  await Promise.all(music.map(source => rampOrSet(source, fullTarget(source), settings.fadeUpMs)))
   state.ducked = false
-  duckedMusic = null
+  duckedSources = []
   setPhase('idle')
+}
+
+// Sends the duck again to every ducked external source. Only called while a cheer is about to play,
+// playing or paused, so the app's own time limit still restores the music if the booth goes away.
+function holdExternal() {
+  duckedSources.forEach(source => {
+    if (source.external && source.hold) source.hold(duckTarget(source))
+  })
+}
+
+// Runs only for the life of one cheer's playback: started when it begins, stopped when it ends.
+function startHold() {
+  stopHold()
+  const every = Math.min(...duckedSources.filter(source => source.external && source.holdEveryMs > 0).map(source => source.holdEveryMs))
+  if (!Number.isFinite(every)) return
+  holdTimer = setInterval(() => {
+    if (playback && state.ducked) holdExternal()
+    else stopHold()
+  }, every)
+}
+
+function stopHold() {
+  clearInterval(holdTimer)
+  holdTimer = null
 }
 
 function playCheerAudio(job, buffer) {
   return new Promise(resolve => {
     playback = { job, buffer, offset: 0, source: null, startAt: 0, paused: false, done: resolve }
     setPhase('cheer')
+    if (state.ducked) startHold()
     job.handlers.onStart?.()
     startSource(playback, 0)
   })
@@ -379,6 +450,7 @@ function finishPlayback(reason) {
   if (!finished) return
   haltSource(finished)
   playback = null
+  stopHold()
   setPhase(state.ducked ? 'ducked' : 'idle')
   finished.done(reason)
 }
@@ -465,7 +537,7 @@ function snapshot() {
   return {
     phase: state.phase,
     ducked: state.ducked,
-    musicPlaying: !!currentMusic(),
+    musicPlaying: boothMusicPlaying(),
     cheerId: p ? p.job.cheer.id : null,
     paused: p ? p.paused : false,
     position: p ? positionOf(p) : 0,
