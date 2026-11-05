@@ -48,9 +48,22 @@ export function detectInApp() {
   if (params.get(FROM_APP_PARAM) === IN_APP_VALUE) remember(FROM_APP_KEY)
 }
 
+// Fallback for links put in the app without ?src=my20fit_app (e.g. a plain /cheer link): spot an
+// app webview from its user agent. iOS app webviews (WKWebView) leave out the "Safari/" token that
+// Safari, Chrome, Firefox and the other iOS browsers all send; Android WebView adds "; wv)".
+// In-app browsers of apps that have their own mic access keep the normal flow, as before.
+const OWN_MIC_APPS = /Instagram|FBAN|FBAV|FB_IAB|Line\/|musical_ly|BytedanceWebview|TikTok/i
+
+export function isAppWebview(ua = navigator.userAgent) {
+  if (OWN_MIC_APPS.test(ua)) return false
+  const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)
+  if (ios) return /AppleWebKit/.test(ua) && !/Safari\//.test(ua)
+  return /Android/.test(ua) && /; wv\)/.test(ua)
+}
+
 // True inside the my20fit app webview: never ask for the mic.
 export function isInApp() {
-  return read(IN_APP_KEY)
+  return read(IN_APP_KEY) || isAppWebview()
 }
 
 // True in the phone's browser after being sent there from the app.

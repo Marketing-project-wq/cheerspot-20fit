@@ -62,7 +62,7 @@ export default function Landing() {
             <span aria-hidden="true">→</span>
           </Link>
         )}
-        <p className="cz-l-note">{inApp ? COPY.inAppNote[lang] : L.ctaNote}</p>
+        <p className="cz-l-note">{inApp ? COPY.inAppNote.id : L.ctaNote}</p>
       </div>
 
       <section className="cz-l-how" aria-labelledby="cz-l-how-title">
