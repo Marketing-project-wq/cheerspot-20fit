@@ -1,6 +1,6 @@
 import { Slider } from './boothParts.jsx'
 
-// Two independent volumes under the queue: the cheers, and the music (YouTube or live input).
+// Two independent volumes under the queue: the cheers, and the music (YouTube, music folder or live input).
 export default function VolumePanel({ cheer, onCheer, music, onMusic }) {
   return (
     <section className="booth-panel booth-volume" aria-labelledby="booth-volume-title">
@@ -27,7 +27,7 @@ export default function VolumePanel({ cheer, onCheer, music, onMusic }) {
           format={value => `${value}%`}
           onChange={value => onMusic(value / 100)}
         />
-        <p className="booth-volume__hint">YouTube or the live input from the DJ mixer.</p>
+        <p className="booth-volume__hint">YouTube, the music folder, or the live input from the DJ mixer.</p>
       </div>
     </section>
   )

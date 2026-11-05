@@ -1,5 +1,5 @@
 // Audio engine for the booth: one shared AudioContext, the cheer chain, the DJ live input, and the
-// ducking state machine. Music sources (YouTube, live input) register an adapter with
+// ducking state machine. Music sources (YouTube, a music folder, live input) register an adapter with
 // { isPlaying(), getLevel(), setLevel(v), rampTo(v, ms) }. Levels are 0..1.
 
 // Gentle on purpose: the music sinks over 2.5 s, the cheer starts only once it is down, and the music
@@ -97,7 +97,7 @@ export function setMusicVolume(value) {
   applyLevels()
 }
 
-// Register a music adapter under a name ('youtube' or 'live'). Pass null to remove it.
+// Register a music adapter under a name ('youtube', 'folder' or 'live'). Pass null to remove it.
 export function registerMusicSource(name, adapter) {
   sources[name] = adapter || null
   applyLevels()
@@ -188,10 +188,38 @@ export async function createLiveInput(deviceId) {
   gain.connect(context.destination)
   const track = stream.getAudioTracks()[0]
   const samples = new Float32Array(analyser.fftSize)
-  let cancelRamp = null
+  const adapter = createGainAdapter(gain, () => track?.readyState === 'live')
 
-  const adapter = {
-    isPlaying: () => track?.readyState === 'live',
+  return {
+    adapter,
+    label: track?.label || 'Audio input',
+    // Signal strength 0..1 before the booth's volume, for the input meter.
+    meter() {
+      analyser.getFloatTimeDomainData(samples)
+      let peak = 0
+      for (const value of samples) peak = Math.max(peak, Math.abs(value))
+      return peak
+    },
+    onEnded(callback) {
+      track?.addEventListener('ended', callback)
+    },
+    destroy() {
+      adapter.cancel()
+      stream.getTracks().forEach(t => t.stop())
+      source.disconnect()
+      gain.disconnect()
+      analyser.disconnect()
+    },
+  }
+}
+
+// Music adapter for a source routed through a GainNode (live input, music folder): the ducker sets
+// and fades the gain with an eased curve. cancel() stops a fade that is still running.
+export function createGainAdapter(gain, isPlaying) {
+  const context = gain.context
+  let cancelRamp = null
+  return {
+    isPlaying,
     getLevel: () => gain.gain.value,
     setLevel(value) {
       cancelRamp?.()
@@ -216,28 +244,7 @@ export async function createLiveInput(deviceId) {
         cancelRamp = finish
       })
     },
-  }
-
-  return {
-    adapter,
-    label: track?.label || 'Audio input',
-    // Signal strength 0..1 before the booth's volume, for the input meter.
-    meter() {
-      analyser.getFloatTimeDomainData(samples)
-      let peak = 0
-      for (const value of samples) peak = Math.max(peak, Math.abs(value))
-      return peak
-    },
-    onEnded(callback) {
-      track?.addEventListener('ended', callback)
-    },
-    destroy() {
-      cancelRamp?.()
-      stream.getTracks().forEach(t => t.stop())
-      source.disconnect()
-      gain.disconnect()
-      analyser.disconnect()
-    },
+    cancel: () => cancelRamp?.(),
   }
 }
 

@@ -407,6 +407,109 @@
   background: var(--tone-cheer);
 }
 
+/* Music folder: songs picked from a folder on this laptop. */
+.booth-folder {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.booth-folder__input {
+  display: none;
+}
+
+.booth-folder__pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.booth-folder__name {
+  min-width: 0;
+  color: var(--muted);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.booth-folder__progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.booth-folder__progress input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.booth-folder__time {
+  flex: none;
+  min-width: 3.2em;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.booth-folder__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 480px;
+  margin: 0;
+  padding: 0 4px 0 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.booth-folder__song {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.booth-folder__song:hover {
+  background: var(--panel-2);
+}
+
+.booth-folder__song.is-current {
+  border-color: var(--accent);
+  background: var(--panel-2);
+}
+
+.booth-folder__num {
+  display: inline-flex;
+  flex: none;
+  justify-content: center;
+  min-width: 2em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.booth-folder__song.is-current .booth-folder__num {
+  color: var(--accent);
+}
+
+.booth-folder__title {
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
 /* YouTube layout. Home: chips and grid above the deck. Watching: video and deck, list after it
    (beside it when the panel is wide enough). Sizes follow the panel, not the window. */
 .booth-music {
