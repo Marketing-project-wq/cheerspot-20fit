@@ -41,6 +41,9 @@ export const COPY = {
   ariaLogo: { id: '20FIT Race Lab', en: '20FIT Race Lab' },
   statusTitle: { id: 'STATUS CHEER KAMU', en: 'YOUR CHEER STATUS' },
   statusFor: { id: 'Untuk', en: 'For' },
+  inAppCta: { id: 'REKAM DI BROWSER', en: 'RECORD IN BROWSER' },
+  inAppNote: { id: 'Perekaman dibuka di browser HP supaya mikrofon bisa dipakai.', en: 'Recording opens in your phone browser so the mic can be used.' },
+  backToApp: { id: 'Kamu bisa kembali ke app 20FIT.', en: 'You can head back to the 20FIT app.' },
   statusNote: { id: 'Status update otomatis, tidak perlu refresh.', en: 'Status updates by itself, no need to refresh.' },
 }
 

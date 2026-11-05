@@ -3,7 +3,11 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { I18nProvider } from './lib/i18n.jsx'
 import App from './App.jsx'
+import { detectInApp } from './lib/inApp.js'
 import './index.css'
+
+// Before the first render: in the my20fit app webview, nothing may ask for the mic.
+detectInApp()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

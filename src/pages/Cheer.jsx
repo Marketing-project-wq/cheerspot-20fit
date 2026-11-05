@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useT } from '../lib/i18n.jsx'
 import useCheerFlow from '../components/cheer/useCheerFlow.js'
 import { Header, Hero } from '../components/cheer/Hero.jsx'
@@ -8,16 +9,48 @@ import SuccessScreen from '../components/cheer/SuccessScreen.jsx'
 import CheerStatus from '../components/cheer/CheerStatus.jsx'
 import { COPY } from '../components/cheer/copy.js'
 import { ShieldIcon } from '../components/cheer/icons.jsx'
+import { browserUrl, isInApp } from '../lib/inApp.js'
 import '../components/cheer/cheer.css'
 
 export default function Cheer() {
   const { lang: appLang } = useT()
   const lang = appLang === 'en' ? 'en' : 'id'
-  const f = useCheerFlow({ lang })
 
   useEffect(() => {
     document.title = 'Send a Cheer · CheerSpot'
   }, [])
+
+  // In the my20fit app webview the recorder (and its mic request) is never mounted.
+  return isInApp() ? <OpenInBrowser lang={lang} /> : <Recorder lang={lang} />
+}
+
+// /cheer inside the my20fit app: no mic here, so offer to continue in the phone's browser.
+// Keeps this page's query (e.g. ?event= from a venue QR) on the browser link.
+function OpenInBrowser({ lang }) {
+  const { pathname, search } = useLocation()
+  return (
+    <div className="cz-app">
+      <Header lang={lang} />
+      <Hero lang={lang} />
+      <div className="cz-stage">
+        <div className="cz-idle cz-rise">
+          <a href={browserUrl(pathname + search)} className="cz-s-cta cz-inapp-cta">
+            {COPY.inAppCta[lang]}
+            <span aria-hidden="true">→</span>
+          </a>
+          <div className="cz-muted cz-inapp-note">{COPY.inAppNote[lang]}</div>
+        </div>
+      </div>
+      <div className="cz-privacy">
+        <ShieldIcon />
+        <span>{COPY.privacy[lang]}</span>
+      </div>
+    </div>
+  )
+}
+
+function Recorder({ lang }) {
+  const f = useCheerFlow({ lang })
 
   if (f.s === 'success') {
     return <SuccessScreen lang={lang} athlete={f.athlete} sent={f.sent} onAgain={f.again} />

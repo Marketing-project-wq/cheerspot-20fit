@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { MAX_SEC, pickMime, platformOf } from './format.js'
 import { submitCheer } from '../../lib/cheers.js'
 import { readSent, rememberSent } from './sentCheers.js'
+import { isInApp } from '../../lib/inApp.js'
 
 // Flow states: idle -> recording -> preview -> uploading -> success
 // Failures go to error (retry or auto-resume when mic access is granted).
@@ -101,6 +102,8 @@ export default function useCheerFlow({ lang = 'id' } = {}) {
 
   // Ask for the mic once; reuse the same stream for later recordings
   const acquire = () => {
+    // Safety net: /cheer never runs this hook in the my20fit app webview, where a mic request crashes the app.
+    if (isInApp()) return Promise.reject(Object.assign(new Error('in-app webview'), { name: 'NotAllowedError' }))
     const md = navigator.mediaDevices
     const cur = streamRef.current
     if (cur && cur.getAudioTracks().some((t) => t.readyState === 'live')) return Promise.resolve(cur)
@@ -222,6 +225,7 @@ export default function useCheerFlow({ lang = 'id' } = {}) {
     setHeard(false)
     setPos(0)
     setPlaying(false)
+    if (isInApp()) return
     if (window.isSecureContext === false) return fail('insecure')
     const md = navigator.mediaDevices
     if (!md || !md.getUserMedia || typeof MediaRecorder === 'undefined') return fail('unsupported')
@@ -412,7 +416,7 @@ export default function useCheerFlow({ lang = 'id' } = {}) {
   useEffect(() => {
     dead.current = false
     const md = navigator.mediaDevices
-    if (md && md.getUserMedia && window.isSecureContext !== false) acquire().catch(() => {})
+    if (!isInApp() && md && md.getUserMedia && window.isSecureContext !== false) acquire().catch(() => {})
     const onHide = () => {
       if (document.visibilityState === 'hidden' && sRef.current !== 'recording') release()
     }
