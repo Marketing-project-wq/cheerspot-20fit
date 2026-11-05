@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { createLiveInput, registerMusicSource } from '../../lib/ducking.js'
 import { createYouTubeSource, parseYouTubeInput } from '../../lib/youtubePlayer.js'
+import { createFolderSource, folderNameOf, tracksFromFiles } from '../../lib/folderPlayer.js'
 import { fetchTopMusic, searchYouTube } from '../../lib/youtubeSearch.js'
 import { formatTime, Icon } from './boothParts.jsx'
 import { readStored, writeStored } from './boothStorage.js'
+import FolderPlayer from './FolderPlayer.jsx'
 import LiveInput from './LiveInput.jsx'
 
 const PLAYLIST_KEY = 'cheerspot.booth.playlist'
@@ -20,6 +22,7 @@ const CHIPS = [
 ]
 
 const EMPTY_YT = { kind: null, title: '', index: -1, count: 0, shuffle: false, playing: false, loaded: false }
+const EMPTY_FOLDER = { folder: '', tracks: [], current: -1, playing: false, time: 0, duration: 0, shuffle: false }
 
 function Transport({ playing, shuffle, canTrack, hasTrack, onPrevious, onToggle, onNext, onShuffle, shuffleDisabled }) {
   return (
@@ -63,8 +66,10 @@ export default function MusicPlayer({ started, youtube, onToast }) {
   const [playingResult, setPlayingResult] = useState(null)
   const [chip, setChip] = useState(null)
   const [ytInfo, setYtInfo] = useState(EMPTY_YT)
-  // Music source: YouTube, or the DJ mixer coming in as a live input. Only one plays at a time.
+  // Music source: YouTube, a music folder on this laptop, or the DJ mixer coming in as a live input.
+  // Only one plays at a time.
   const [source, setSource] = useState('youtube')
+  const [folderInfo, setFolderInfo] = useState(EMPTY_FOLDER)
   const [live, setLive] = useState(null)
   const [connecting, setConnecting] = useState(false)
 
@@ -72,6 +77,7 @@ export default function MusicPlayer({ started, youtube, onToast }) {
   const ytRef = useRef(null)
   const toastRef = useRef(onToast)
   const liveRef = useRef(null)
+  const folderRef = useRef(null)
 
   useEffect(() => {
     toastRef.current = onToast
@@ -96,6 +102,22 @@ export default function MusicPlayer({ started, youtube, onToast }) {
     }
   }, [ytReady])
 
+  // The folder player lives as long as the booth, so a picked folder survives switching tabs.
+  useEffect(() => {
+    const folder = createFolderSource({
+      onChange: setFolderInfo,
+      onError: message => toastRef.current?.(message),
+    })
+    folderRef.current = folder
+    registerMusicSource('folder', folder.adapter)
+    return () => {
+      registerMusicSource('folder', null)
+      folder.destroy()
+      folderRef.current = null
+      setFolderInfo(EMPTY_FOLDER)
+    }
+  }, [])
+
   const disconnectLive = () => {
     const current = liveRef.current
     if (!current) return
@@ -109,6 +131,7 @@ export default function MusicPlayer({ started, youtube, onToast }) {
     if (connecting || liveRef.current) return
     setConnecting(true)
     ytRef.current?.pause()
+    folderRef.current?.pause()
     try {
       const input = await createLiveInput(deviceId)
       liveRef.current = input
@@ -131,8 +154,34 @@ export default function MusicPlayer({ started, youtube, onToast }) {
 
   const pickSource = next => {
     setSource(next)
-    // Going live pauses YouTube; YouTube playing again turns the live input off (see below).
-    if (next === 'live') ytRef.current?.pause()
+    // Going live pauses YouTube and the folder; playing either again turns the live input off (see below).
+    if (next === 'live') {
+      ytRef.current?.pause()
+      folderRef.current?.pause()
+    }
+  }
+
+  // Starting the folder stops YouTube and the live input, so only one music source plays.
+  const folderStart = action => {
+    const folder = folderRef.current
+    if (!folder) return
+    ytRef.current?.pause()
+    disconnectLive()
+    action(folder)
+  }
+
+  const pickFolder = files => {
+    const tracks = tracksFromFiles(files)
+    if (!tracks.length) {
+      toastRef.current?.('No songs found in that folder. Pick a folder with MP3, M4A or WAV files.')
+      return
+    }
+    folderRef.current?.setTracks(tracks, folderNameOf(tracks))
+  }
+
+  const folderToggle = () => {
+    if (folderInfo.playing) folderRef.current?.pause()
+    else folderStart(folder => folder.play())
   }
 
   const loadResults = async (load, chipKey) => {
@@ -175,6 +224,7 @@ export default function MusicPlayer({ started, youtube, onToast }) {
     if (!parsed || !ytRef.current) return
     setUrlError('')
     disconnectLive()
+    folderRef.current?.pause()
     ytRef.current.load(parsed)
     setPlayingResult(item)
   }
@@ -193,6 +243,7 @@ export default function MusicPlayer({ started, youtube, onToast }) {
     setUrlError('')
     writeStored(PLAYLIST_KEY, url.trim())
     disconnectLive()
+    folderRef.current?.pause()
     ytRef.current.load(parsed)
     setPlayingResult(null)
   }
@@ -204,6 +255,7 @@ export default function MusicPlayer({ started, youtube, onToast }) {
       yt.pause()
     } else {
       disconnectLive()
+      folderRef.current?.pause()
       yt.play()
     }
   }
@@ -222,11 +274,27 @@ export default function MusicPlayer({ started, youtube, onToast }) {
           <button type="button" aria-pressed={source === 'youtube'} onClick={() => pickSource('youtube')}>
             YouTube
           </button>
+          <button type="button" aria-pressed={source === 'folder'} onClick={() => pickSource('folder')}>
+            Folder{folderInfo.playing ? ' ●' : ''}
+          </button>
           <button type="button" aria-pressed={source === 'live'} onClick={() => pickSource('live')}>
             Live input (DJ){live ? ' ●' : ''}
           </button>
         </div>
       </header>
+
+      {source === 'folder' && (
+        <FolderPlayer
+          info={folderInfo}
+          onPick={pickFolder}
+          onPlayTrack={index => folderStart(folder => folder.playTrack(index))}
+          onToggle={folderToggle}
+          onPrevious={() => folderStart(folder => folder.previous())}
+          onNext={() => folderStart(folder => folder.next())}
+          onShuffle={() => folderRef.current?.toggleShuffle()}
+          onSeek={seconds => folderRef.current?.seek(seconds)}
+        />
+      )}
 
       {source === 'live' && (
         <LiveInput
