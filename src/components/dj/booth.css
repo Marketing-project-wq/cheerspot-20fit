@@ -183,11 +183,12 @@
 @media (min-width: 1100px) {
   .booth-grid {
     grid-template-columns: minmax(0, 1.65fr) minmax(360px, 1fr);
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: auto auto auto 1fr;
     grid-template-areas:
       'music now'
       'music queue'
-      'music volume';
+      'music volume'
+      'music ducker';
     align-items: start;
   }
 
@@ -205,6 +206,10 @@
 
   .booth-volume {
     grid-area: volume;
+  }
+
+  .booth-ducker {
+    grid-area: ducker;
   }
 }
 
@@ -405,6 +410,88 @@
 
 .booth-meter__bar[data-clip='true'] {
   background: var(--tone-cheer);
+}
+
+/* Ducker DJ: link to the app that turns rekordbox down on the DJ's laptop. */
+.booth-ducker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.booth-ducker .booth-panel__head {
+  margin-bottom: 0;
+}
+
+.booth-ducker__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-2);
+  font-size: 0.875rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.booth-ducker__chip::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--chip-tone);
+}
+
+.booth-ducker__chip.is-ok { --chip-tone: var(--tone-music); border-color: var(--tone-music); }
+.booth-ducker__chip.is-warn { --chip-tone: var(--tone-duck); border-color: var(--tone-duck); }
+.booth-ducker__chip.is-off { --chip-tone: #737373; color: var(--muted); }
+
+.booth-ducker__actions,
+.booth-ducker__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.booth-ducker__cal {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.booth-ducker__calbody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.booth-ducker__cal > summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.booth-ducker__cal[open] > summary {
+  margin-bottom: 12px;
+}
+
+.booth-ducker__cal .booth-field {
+  flex: 1 1 120px;
+}
+
+.booth-ducker__cc {
+  margin: 0;
+  color: var(--muted);
+}
+
+.booth-ducker__cc strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.booth-ducker__probe {
+  flex: 1 1 200px;
 }
 
 /* Music folder: songs picked from a folder on this laptop. */

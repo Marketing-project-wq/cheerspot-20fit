@@ -2,7 +2,9 @@
 
 Aplikasi kecil di laptop DJ yang otomatis mengecilkan musik rekordbox saat cheer diputar, lalu menaikkannya lagi.
 
-Versi dokumen: 1.0 · 5 November 2026 · Pemilik produk: tim CheerSpot (20FIT)
+Versi dokumen: 1.1 · 5 November 2026 · Pemilik produk: tim CheerSpot (20FIT)
+
+> **Perubahan arah (v1.1):** versi 1 sekarang adalah **app menu bar macOS** di MacBook DJ yang berbicara dengan booth lewat **Supabase Realtime Broadcast**, bukan WebSocket lokal. Varian Windows dan WebSocket lokal (`ws://127.0.0.1:47321`) **ditunda**. Bagian yang menyebut Windows, tray, WebSocket lokal, atau loopMIDI di bawah ini berlaku untuk varian yang ditunda itu. Kontrak yang berlaku sekarang ada di **bagian 11**. Booth `/dj` dijalankan operator di perangkat terpisah, bukan di laptop DJ.
 
 ---
 
@@ -356,26 +358,61 @@ Penanganan di versi 1:
   ```
   `DuckController` memegang state (`level` saat ini, `ducked`, timer fail-safe) dan memanggil `Apply` sepanjang fade. Backend tidak tahu soal fade.
 
-## 11. Perubahan di web CheerSpot (booth `/dj`)
+## 11. Kontrak booth ↔ Ducker (Supabase Realtime Broadcast) dan perubahan di booth `/dj`
 
-Bagian ini dikerjakan di repo `cheerspot-20fit`, bukan di Ducker. Ditulis di sini supaya kedua sisi memakai kontrak yang sama.
+Kontrak ini yang berlaku untuk versi 1 (macOS). Booth sudah mengimplementasikannya di repo `cheerspot-20fit`:
 
-- W1. **Koneksi ke Ducker:** booth mencoba tersambung ke `ws://127.0.0.1:47321/cheerspot` saat booth mulai. Kalau gagal, coba lagi dengan jeda 2, 4, 8, lalu maksimal 15 detik, tanpa memunculkan error berulang. Kirim `hello`, lalu `ping` setiap 5 detik.
-- W2. **Indikator di booth:** chip kecil di header:
-  - "Ducker: tersambung · rekordbox (MIDI)" (hijau)
-  - "Ducker: target tidak siap" (kuning)
-  - "Ducker: tidak berjalan" (abu-abu)
-- W3. **Sumber musik eksternal:** daftarkan adapter musik `external` di `src/lib/ducking.js` (`registerMusicSource('external', adapter)`):
-  - `isPlaying()` bernilai `true` jika Ducker tersambung dan `status.ready` (booth tidak tahu apakah rekordbox sedang memutar lagu, jadi dianggap selalu ada musik).
-  - `rampTo(level, ms)` mengirim `duck` (jika `level < 1`) atau `restore` (jika `level >= 1`), lalu resolve saat `ducked`/`restored` datang. Jika tidak ada balasan dalam `ms + 1500`, tetap resolve, supaya cheer tidak tertahan.
-  - `setLevel()` tidak mengirim apa pun. Slider Music volume di booth tidak mengubah volume rekordbox.
-  - Level duck yang dikirim = pengaturan Duck level booth (default 0,25).
-- W4. **Duck semua sumber yang aktif:** saat ini `ducking.js` hanya mengecilkan satu sumber musik. Ubah supaya semua sumber yang sedang aktif (misalnya Ducker dan Folder) dikecilkan dan dinaikkan bersamaan.
-- W5. **Output device untuk cheer:** pilihan "Output cheer" di booth (daftar `audiooutput` dari `navigator.mediaDevices.enumerateDevices()`), diterapkan dengan `AudioContext.setSinkId()` (Chrome 110+). Pilihan disimpan di `localStorage`.
-- W6. **Tombol "Tes ducking":** mengirim `test` ke Ducker. Kalau Ducker tidak tersambung, tes memakai ducking booth sendiri.
-- W7. **Saat tab ditutup:** kirim `restore` di `pagehide` (best effort). Fail-safe Ducker (F30) tetap menjadi pengaman utama.
-- W8. **Izin Chrome:** Chrome versi baru bisa menampilkan izin "akses ke perangkat di jaringan lokal / aplikasi di perangkat ini" saat halaman https tersambung ke `127.0.0.1`. Panduan setup harus menyebutkan untuk klik **Allow**. Kalau izin ditolak, chip menampilkan "Ducker diblokir Chrome. Izinkan di pengaturan situs."
-- W9. Mode **AUTO** di booth sudah memutar cheer begitu admin menyetujuinya. Tidak ada perubahan alur admin.
+- `src/lib/duckerConfig.js` berisi `DUCKER_DEFAULTS`, satu-satunya tempat nilai tetap.
+- `src/lib/ducker.js` berisi koneksi, protokol, dan adapter musik `external`.
+- `src/lib/ducking.js` mengecilkan dan menaikkan semua sumber musik yang aktif sekaligus, dan mengirim ulang duck selama ada cheer.
+- `src/components/dj/DuckerPanel.jsx` adalah panel "Ducker DJ".
+
+### 11.1 Channel dan pesan
+
+- **Channel:** `supabase.channel('ducker:' + pairCode, { config: { broadcast: { self: false } } })`. Channel publik (non-private), memakai anon/publishable key project CheerSpot.
+- **Event broadcast:** `ducker`.
+- **Kode pairing:** dibuat app, 8 karakter dari `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (huruf besar + angka, tanpa O/0/I/1). Booth menerima input tanpa membedakan huruf besar-kecil, dan spasi dibuang.
+- **Bentuk setiap payload:** `{ v: 1, from, type, id?, ... }`. Booth mengirim `from: 'booth'` dan mengabaikan pesan yang `from`-nya bukan `'ducker'`. App sebaiknya mengabaikan pesan yang `from`-nya bukan `'booth'`.
+
+| Arah | type | Field | Kapan |
+| --- | --- | --- | --- |
+| Booth → App | `hello` | `clientVersion` | Setiap kali booth (kembali) bergabung ke channel |
+| Booth → App | `duck` | `id`, `level` (0..1), `fadeMs` | Di awal **setiap** cheer, dan setiap 20 detik selama cheer diputar atau di-pause |
+| Booth → App | `restore` | `id`, `fadeMs` | Setelah cheer terakhir + jeda 1,5 detik. Juga saat operator klik Putuskan dan saat tab ditutup (`pagehide`, best effort) |
+| Booth → App | `ping` | | Setiap 5 detik |
+| Booth → App | `test` | `id` | Tombol "Tes ducking" |
+| Booth → App | `restore_now` | `id` | Tombol "Kembalikan volume sekarang" |
+| Booth → App | `config` | `normalValue?`, `duckValue?`, `midiChannel?`, `cc?`, `maxDuckSec?` | Tombol "Simpan" di Kalibrasi (booth saat ini hanya mengirim `normalValue` dan `duckValue`) |
+| Booth → App | `send_value` | `value` (0–127) | Tombol "Kirim" di Kalibrasi |
+| App → Booth | `welcome` | `appVersion?` | Balasan `hello` |
+| App → Booth | `ducked` | `id`, `skipped`, `reason?` | Fade turun selesai. `id` sama dengan `duck` |
+| App → Booth | `restored` | `id`, `skipped`, `reason?` | Fade naik selesai. `id` sama dengan `restore` |
+| App → Booth | `status` | `ready`, `realtime`, `midiReady`, `ducked`, `level`, `ccValue`, `config`, `pairCode`, `appVersion` | Setiap 5 detik, dan sebaiknya juga langsung setelah `hello`/`ping` |
+| App → Booth | `error` | `code`, `message` | Kapan saja. Booth menampilkannya di panel selama 60 detik |
+
+### 11.2 Perilaku booth
+
+- **Level duck** = pengaturan Duck level booth (`DEFAULT_DUCKING.duckLevel`, saat ini 0,25), dikirim apa adanya. Slider Music volume booth **tidak** mengubah volume rekordbox. `fadeMs` mengikuti fade booth: turun 2.500 ms, naik 3.500 ms.
+- **Menunggu balasan:** cheer pertama dalam satu rangkaian menunggu `ducked` dengan `id` yang sama, paling lama `fadeMs + 1.500 ms`. Setelah itu cheer tetap diputar. `duck` ulang (cheer berikutnya saat musik sudah kecil, atau kirim ulang 20 detik) dikirim dengan `fadeMs: 0` dan **tidak** ditunggu.
+- **Kirim ulang 20 detik** hanya berjalan selama ada cheer yang sedang diputar atau di-pause. Begitu cheer selesai, kiriman ulang berhenti. Tidak ada jalur di mana booth terus mengirim `duck` tanpa cheer aktif, jadi batas 45 detik di app tetap menjadi pengaman.
+- **Kapan app dianggap aktif:** `status` terakhir diterima maksimal 12 detik lalu **dan** `status.ready === true`. Kalau tidak, booth tidak mengirim `duck`/`restore` untuk cheer dan memutar cheer seperti biasa (YouTube, folder, dan live input tetap dikecilkan oleh booth sendiri).
+- **Semua sumber bersamaan:** sumber musik booth dan app dikecilkan serta dinaikkan bersamaan.
+- **Pill header** tidak menghitung app sebagai musik. Pill tetap "Standby" kalau booth sendiri tidak memutar musik.
+- **Chip status di panel:** hijau "Ducker: tersambung" (`ready`), kuning "Ducker: MIDI belum siap" (`status` ada tapi `ready` false), abu-abu "Ducker: offline" (belum tersambung, atau tidak ada `status` lebih dari 12 detik).
+- **Sambung otomatis:** kode disimpan di `localStorage`. Setelah refresh, booth bergabung lagi kalau sebelumnya tersambung. Putuskan menghapus tanda sambung otomatis.
+- **Log:** semua pesan masuk dan keluar dicatat di console dengan prefix `[ducker]`.
+
+### 11.3 Yang harus dipenuhi app
+
+1. Membalas setiap `duck` dengan `ducked` dan setiap `restore` dengan `restored`, memakai `id` yang sama, setelah fade-nya selesai. `skipped: true` jika MIDI tidak siap.
+2. Mengirim `status` setiap 5 detik. `ready` hanya true jika `duck` benar-benar akan menggerakkan rekordbox.
+3. Pengaman: menaikkan musik sendiri jika tidak ada `duck` baru dalam `maxDuckSec` (default 45 detik). Setiap `duck` mereset timer ini.
+4. `duck` saat sudah kecil dengan `fadeMs: 0` hanya mereset timer (dan menyesuaikan level jika berbeda).
+5. Kode pairing acak 8 karakter. Anon key bersifat publik, jadi kode pairing adalah satu-satunya rahasia channel. Siapa pun yang tahu kode bisa mengirim `duck`/`send_value`.
+
+### 11.4 Syarat di Supabase
+
+Realtime Broadcast di channel **publik** harus diizinkan (Dashboard → Realtime → Settings → "Allow public access"). `realtime.messages` memakai RLS tanpa policy, jadi channel private akan ditolak. Kontrak ini sengaja memakai channel publik.
 
 ## 12. Panduan setup untuk DJ/operator (harus dibuat sebagai `docs/panduan-setup.md`)
 
