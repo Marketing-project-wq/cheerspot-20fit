@@ -38,7 +38,7 @@ function OpenInBrowser({ lang }) {
             {COPY.inAppCta[lang]}
             <span aria-hidden="true">→</span>
           </a>
-          <div className="cz-muted cz-inapp-note">{COPY.inAppNote[lang]}</div>
+          <div className="cz-muted cz-inapp-note">{COPY.inAppNote.id}</div>
         </div>
       </div>
       <div className="cz-privacy">
