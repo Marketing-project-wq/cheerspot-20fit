@@ -4,7 +4,6 @@
 @keyframes cz-wave { 0%, 100% { transform: scaleY(.25) } 50% { transform: scaleY(1) } }
 @keyframes cz-blink { 0%, 100% { opacity: 1 } 50% { opacity: .25 } }
 @keyframes cz-marquee { from { transform: translateX(0) } to { transform: translateX(-50%) } }
-@keyframes cz-eq { 0%, 100% { transform: scaleY(.3) } 50% { transform: scaleY(1) } }
 @keyframes cz-rise { 0% { transform: translateY(16px); opacity: 0 } 100% { transform: none; opacity: 1 } }
 @keyframes cz-ring { 0% { transform: translate(-50%, -50%) scale(.6); opacity: .8 } 100% { transform: translate(-50%, -50%) scale(1.45); opacity: 0 } }
 @keyframes cz-burst {
@@ -92,18 +91,7 @@
   flex-direction: column;
   gap: 14px;
 }
-.cz-kicker {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .14em;
-  color: #C9C9C2;
-}
 .cz-kicker-line { width: 18px; height: 2px; background: #BF0000; flex: none }
-.cz-kicker-text { flex: 1; min-width: 0 }
 .cz-hero-title {
   margin: 0;
   font-family: 'Barlow Condensed', sans-serif;
@@ -125,12 +113,6 @@
   color: #C9C9C2;
   text-wrap: pretty;
   max-width: 330px;
-}
-.cz-eq { display: flex; align-items: flex-end; gap: 3px; height: 14px; flex: none }
-.cz-eq-bar {
-  width: 3px; height: 14px; background: #BF0000; border-radius: 1px;
-  transform-origin: bottom;
-  animation: cz-eq .8s ease-in-out infinite;
 }
 
 /* Ticker */
