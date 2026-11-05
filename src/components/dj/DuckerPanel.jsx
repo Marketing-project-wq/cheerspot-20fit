@@ -161,6 +161,11 @@ export default function DuckerPanel() {
               : 'Menyambung ke channel...'}
         </p>
       )}
+      {state.notice && now - state.notice.at < D.failsafeNoticeMs && (
+        <p className="booth-ducker__notice" role="status">
+          {state.notice.text}
+        </p>
+      )}
       {state.lastError && now - state.lastError.at < D.errorShowMs && (
         <p className="booth-error" role="alert">
           Ducker: {state.lastError.message || state.lastError.code}

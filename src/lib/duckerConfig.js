@@ -34,6 +34,21 @@ export const DUCKER_DEFAULTS = {
   // Leaving the channel waits at most this long for the last restore to go out.
   leaveFlushMs: 800,
 
+  // A skipped duck or restore with one of these reasons still counts as done.
+  okSkipReasons: ['already_ducked', 'in_progress'],
+  // Reasons the booth sets itself when no reply came: the app's state is unknown, so nothing changes.
+  localSkipReasons: ['timeout', 'disconnected'],
+  // The app's error code (or skip reason) for MIDI that is not ready: chip turns yellow, cheers go on.
+  midiNotReadyCode: 'midi_not_ready',
+  // The app restored the music by itself and says why. Shown in the panel for failsafeNoticeMs.
+  failsafePrefix: 'failsafe_',
+  failsafeReasons: {
+    failsafe_booth_silent: 'booth tidak terdengar',
+    failsafe_realtime_disconnected: 'koneksi realtime terputus',
+    failsafe_max_duck: 'batas waktu duck tercapai',
+  },
+  failsafeNoticeMs: 10000,
+
   // MIDI CC range for calibration.
   ccMin: 0,
   ccMax: 127,

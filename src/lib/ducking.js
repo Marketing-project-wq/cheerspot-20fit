@@ -96,6 +96,16 @@ export function getDuckingSettings() {
   return { ...settings }
 }
 
+// A source turned its music back up by itself (the Ducker app's fail-safe), or never went down.
+// It is no longer counted as ducked: the next cheer ducks it again in full and waits for it, and no
+// restore is sent for it. With nothing else down, the booth is no longer ducked either.
+export function markSourceRestored(source) {
+  if (!source || !duckedSources.includes(source)) return
+  duckedSources = duckedSources.filter(item => item !== source)
+  if (!duckedSources.length) state.ducked = false
+  emit()
+}
+
 // Sets the cheer level only; music has its own volume.
 export function setCheerVolume(value) {
   cheerVolume = clamp01(value)
@@ -375,10 +385,12 @@ async function duckForCheer() {
   if (state.ducked) {
     // Already down from the cheer before. External sources get a fresh duck so the app's own time
     // limit starts again; nothing waits for it. A source that started playing since then goes down too.
+    // A source that is up (started since, or restored itself) is ducked in full and waited for.
     holdExternal()
     const fresh = activeSources().filter(source => !duckedSources.includes(source))
+    if (!fresh.length) return
     duckedSources = [...duckedSources, ...fresh]
-    fresh.forEach(source => rampOrSet(source, duckTarget(source), settings.fadeDownMs))
+    await Promise.all(fresh.map(source => rampOrSet(source, duckTarget(source), settings.fadeDownMs)))
     return
   }
   const music = activeSources()

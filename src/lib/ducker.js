@@ -8,7 +8,7 @@
 // test, restore_now, config, send_value. App -> booth: welcome, ducked, restored, status, error.
 
 import { DUCKER_DEFAULTS as D } from './duckerConfig.js'
-import { getDuckingSettings, registerMusicSource } from './ducking.js'
+import { getDuckingSettings, markSourceRestored, registerMusicSource } from './ducking.js'
 import { supabase } from './supabase.js'
 
 const log = (...args) => console.log('[ducker]', ...args)
@@ -20,6 +20,8 @@ let channelStatus = 'closed'
 let lastStatus = null
 let lastStatusAt = 0
 let lastError = null
+// The app's last fail-safe restore, shown briefly in the panel: { text, reason, at }.
+let notice = null
 let appVersion = ''
 let pingTimer = null
 let seq = 0
@@ -83,6 +85,7 @@ function snapshot() {
     ready: isReady(),
     appVersion: lastStatus?.appVersion || appVersion,
     lastError,
+    notice,
   }
 }
 
@@ -161,17 +164,64 @@ function handle(payload) {
       if (payload.appVersion) appVersion = payload.appVersion
       break
     case 'ducked':
-    case 'restored':
-      waiters.get(payload.id)?.resolve(payload)
+    case 'restored': {
+      // A restore the booth did not ask for (no id, or a fail-safe reason): the app brought the music back.
+      const failsafe =
+        payload.type === 'restored' && (!payload.id || String(payload.reason || '').startsWith(D.failsafePrefix))
+      if (failsafe) appRestored(payload.reason)
+      else if (payload.skipped && payload.reason === D.midiNotReadyCode) markMidiNotReady()
+      if (payload.id) waiters.get(payload.id)?.resolve(payload)
       break
+    }
     case 'error':
       lastError = { code: payload.code, message: payload.message, at: Date.now() }
       warn('app error', payload.code, payload.message)
+      // MIDI not ready: stop waiting for the app now, so the cheer plays straight away.
+      if (payload.code === D.midiNotReadyCode) {
+        markMidiNotReady()
+        settleAllWaiters(D.midiNotReadyCode)
+      }
       break
     default:
       break
   }
   emit()
+}
+
+// The app restored the music by itself (its fail-safe). The booth stops counting it as ducked, so the
+// next cheer ducks it in full and waits for the reply instead of only re-sending a hold.
+function appRestored(reason) {
+  const label = D.failsafeReasons[reason] || reason || 'tanpa alasan'
+  log(`app restored the music by itself (${reason || 'no reason'})`)
+  level = 1
+  markSourceRestored(adapter)
+  notice = { text: `Ducker menaikkan musik otomatis (${label})`, reason, at: Date.now() }
+}
+
+// MIDI is not ready on the app: treat it as not ready until its next status says otherwise. The chip
+// turns yellow and cheers play without waiting for it.
+function markMidiNotReady() {
+  if (!lastStatus) return
+  if (lastStatus.ready !== false || lastStatus.midiReady !== false) log('MIDI not ready on the app, not waiting for it')
+  lastStatus = { ...lastStatus, ready: false, midiReady: false }
+}
+
+// What a reply means for the booth. Skipped with an ok reason (already_ducked, in_progress) = done.
+// Skipped for a reason of the booth's own (no reply in time) = unknown, nothing changes. Any other
+// skipped duck = the music did not go down, so it is not counted as ducked.
+function settleReply(type, reply) {
+  if (!reply?.skipped) return
+  const reason = reply.reason || ''
+  if (D.okSkipReasons.includes(reason)) {
+    log(`${type} skipped (${reason}), counted as done`)
+    return
+  }
+  if (D.localSkipReasons.includes(reason)) return
+  warn(`${type} skipped (${reason || 'no reason'})`)
+  if (type === 'duck') {
+    level = 1
+    markSourceRestored(adapter)
+  }
 }
 
 // ---- music adapter for ducking.js ----
@@ -192,7 +242,12 @@ const adapter = {
     level = target
     const fadeMs = Math.max(0, Math.round(ms))
     const wait = fadeMs + D.replyGraceMs
-    return target < 1 ? request('duck', { level: target, fadeMs }, wait) : request('restore', { fadeMs }, wait)
+    const type = target < 1 ? 'duck' : 'restore'
+    const fields = type === 'duck' ? { level: target, fadeMs } : { fadeMs }
+    return request(type, fields, wait).then(reply => {
+      settleReply(type, reply)
+      return reply
+    })
   },
   // Already ducked: send the duck again without waiting, so the app's time limit starts over.
   hold(target) {
@@ -222,6 +277,7 @@ export function connectDucker(code) {
   lastStatus = null
   lastStatusAt = 0
   lastError = null
+  notice = null
   appVersion = ''
   writeStorage(D.storageKeys.pairCode, pairCode)
   writeStorage(D.storageKeys.autoConnect, '1')
