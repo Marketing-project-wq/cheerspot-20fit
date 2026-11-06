@@ -53,7 +53,7 @@ const fromRow = row => {
   }
 }
 
-const PAGES = ['mod', 'queue', 'hist', 'qr', 'dj', 'set']
+const PAGES = ['mod', 'queue', 'hist', 'booth', 'qr', 'dj', 'set']
 // Set once this browser's own events have been merged into the shared list.
 const EVENTS_SYNCED_KEY = 'cz-admin-events-synced'
 const isEventsValue = value =>

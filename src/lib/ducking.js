@@ -45,6 +45,8 @@ let running = false
 // The job taken from pending: loading its audio, ducking, then playing. Cleared when it ends.
 let activeJob = null
 let playback = null
+// A cheer taken from the queue (loading or ducking) that Stop cancelled before it started.
+let stoppedJob = null
 const bufferCache = new Map()
 const subscribers = new Set()
 const state = { phase: 'idle', ducked: false }
@@ -157,6 +159,16 @@ export function resumeCheer() {
 
 export function skipCheer() {
   if (playback) finishPlayback('skipped')
+}
+
+// Ends the cheer now and drops every cheer waiting behind it, also one that is still loading. The
+// music then comes back up as after any last cheer. The booth's mode is not touched: in AUTO, the
+// next approved cheer still plays after the gap.
+export function stopCheers() {
+  pending.length = 0
+  if (playback) finishPlayback('stopped')
+  else if (activeJob) stoppedJob = activeJob
+  emit()
 }
 
 export function restartCheer() {
@@ -345,6 +357,7 @@ async function runQueue() {
         buffer = await loadBuffer(job.cheer)
       } catch (err) {
         activeJob = null
+        if (stoppedJob === job) stoppedJob = null
         emit()
         job.handlers.onError?.(err)
         continue
@@ -352,9 +365,11 @@ async function runQueue() {
       // The music fades down fully first, then the cheer starts, so the voice never lands on a loud track.
       // A cheer right after another (music already down) or with no music playing starts at once.
       const wasDucked = state.ducked
-      await duckForCheer()
-      if (!wasDucked && state.ducked) await delay(CHEER_LEAD_MS)
-      const reason = await playCheerAudio(job, buffer)
+      if (stoppedJob !== job) await duckForCheer()
+      if (stoppedJob !== job && !wasDucked && state.ducked) await delay(CHEER_LEAD_MS)
+      // Stopped while loading or ducking: it never starts.
+      const reason = stoppedJob === job ? 'stopped' : await playCheerAudio(job, buffer)
+      if (stoppedJob === job) stoppedJob = null
       activeJob = null
       emit()
       job.handlers.onEnd?.(reason)

@@ -8,6 +8,7 @@ import { HistoryPanel, QueuePanel } from './ListPanels.jsx'
 import QrPanel from './QrPanel.jsx'
 import SettingsPanel from './SettingsPanel.jsx'
 import DjAccountsPanel from './DjAccountsPanel.jsx'
+import BoothControlPanel from './BoothControlPanel.jsx'
 
 export default function ModerationDashboard({ adminName, liveFeed, onLogout }) {
   const { lang, setLang } = useT()
@@ -37,6 +38,7 @@ export default function ModerationDashboard({ adminName, liveFeed, onLogout }) {
         {m.page === 'mod' && <ModerationPanel m={m} lang={lang} />}
         {m.page === 'queue' && <QueuePanel m={m} lang={lang} />}
         {m.page === 'hist' && <HistoryPanel m={m} lang={lang} />}
+        {m.page === 'booth' && <BoothControlPanel m={m} lang={lang} />}
         {m.page === 'qr' && <QrPanel lang={lang} eventName={m.eventName} copied={m.copied} onCopy={m.copyLink} />}
         {m.page === 'dj' && <DjAccountsPanel lang={lang} />}
         {m.page === 'set' && <SettingsPanel m={m} lang={lang} />}
