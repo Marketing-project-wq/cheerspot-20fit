@@ -19,6 +19,7 @@ import {
   setMusicVolume as applyMusicVolume,
   skipCheer,
   startAudio,
+  stopCheers,
   stopAudio,
   subscribeBooth,
 } from '../../lib/ducking.js'
@@ -28,6 +29,7 @@ import { formatTime } from './boothParts.jsx'
 import { readStored, writeStored } from './boothStorage.js'
 import { AUTO_GAP_KEY, DEFAULT_AUTO_GAP, readSetting } from '../../lib/settings.js'
 import { watchTables } from '../../lib/realtime.js'
+import { BOOTH_REMOTE } from '../../lib/boothRemoteConfig.js'
 
 const MUSIC_VOLUME_KEY = 'cheerspot.booth.musicVolume'
 const CHEER_VOLUME_KEY = 'cheerspot.booth.cheerVolume'
@@ -51,7 +53,11 @@ const SETTINGS_POLL_MS = 15000
 // Owns the booth state: queue, playback status, mode, and the AUTO scheduler.
 export default function useCheerBooth() {
   const [started, setStarted] = useState(false)
-  const [mode, setMode] = useState('auto')
+  // AUTO or MANUAL, set here or from /admin. Kept in this browser, so a refresh keeps the mode.
+  const [mode, setMode] = useState(() => {
+    const saved = readStored(BOOTH_REMOTE.modeKey, 'auto')
+    return BOOTH_REMOTE.modes.includes(saved) ? saved : 'auto'
+  })
   const [cheerVolume, setCheerVolume] = useState(() => readStored(CHEER_VOLUME_KEY, 1))
   // Both volumes are kept in this browser, so the DJ's levels survive a refresh.
   const [musicVolume, setMusicVolume] = useState(() => readStored(MUSIC_VOLUME_KEY, 0.8))
@@ -149,6 +155,10 @@ export default function useCheerBooth() {
 
 
   useEffect(() => {
+    writeStored(BOOTH_REMOTE.modeKey, mode)
+  }, [mode])
+
+  useEffect(() => {
     applyCheerVolume(cheerVolume)
     writeStored(CHEER_VOLUME_KEY, cheerVolume)
   }, [cheerVolume])
@@ -184,6 +194,11 @@ export default function useCheerBooth() {
     [showToast],
   )
 
+  // A cheer that can be picked: not already queued or playing, and its audio has not failed.
+  const usable = useCallback(item => !statusRef.current.queued.includes(item.id) && !failedIds.current.has(item.id), [])
+  // The next approved cheer in queue order. AUTO plays it after the gap; "Play next" from /admin plays it now.
+  const pickNext = useCallback(() => itemsRef.current.find(item => item.status === 'approved' && usable(item)) || null, [usable])
+
   // AUTO: when the gap has passed and nothing is playing, play the next approved cheer that is not already
   // queued, once it has waited one gap since it arrived. With no approved cheer waiting at all, a pinned
   // cheer plays instead (when Auto pins is on), the one heard longest ago first.
@@ -196,8 +211,7 @@ export default function useCheerBooth() {
       const s = statusRef.current
       // busy covers the seconds while a cheer's audio loads, so it is never picked twice.
       if (s.phase === 'cheer' || s.busy || t < nextAtRef.current) return
-      const usable = item => !s.queued.includes(item.id) && !failedIds.current.has(item.id)
-      const next = itemsRef.current.find(item => item.status === 'approved' && usable(item))
+      const next = pickNext()
       if (next) {
         if (t >= arrivedAt(next.id) + gapRef.current * 1000) playItem(next)
         return
@@ -208,7 +222,14 @@ export default function useCheerBooth() {
       if (pin) playItem(pin)
     }, 500)
     return () => clearInterval(timer)
-  }, [started, playItem])
+  }, [started, playItem, pickNext, usable])
+
+  // Plays the next approved cheer now, in either mode, without waiting for the gap. Returns it, or null.
+  const playNext = useCallback(() => {
+    const next = pickNext()
+    if (next) playItem(next)
+    return next
+  }, [pickNext, playItem])
 
   // The booth starts by itself. Signing in on /dj is a click, so the browser allows sound right away.
   // A remembered session opens without one: then sound starts on the first click or key press anywhere,
@@ -395,6 +416,10 @@ export default function useCheerBooth() {
     togglePlayPause,
     replayFocus,
     skip: skipCheer,
+    stop: stopCheers,
+    playNext,
+    pickNext,
+    needsTap,
     deleteItem,
     pinned,
     togglePin,

@@ -1642,6 +1642,260 @@
   color: #a3a39b;
 }
 
+/* Booth control: one hand on a phone. Status on top, big buttons, no sideways scrolling. */
+.adm-booth {
+  max-width: 640px;
+}
+.adm-booth__status,
+.adm-booth__block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1.5px solid #e3e3dc;
+  border-radius: 14px;
+  background: #ffffff;
+}
+.adm-booth__status {
+  border-color: #d6d6ce;
+  background: #f7f7f3;
+}
+.adm-booth__status.is-online {
+  border-color: #1f9d55;
+}
+.adm-booth__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+}
+.adm-booth__dot {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border-radius: 50%;
+  background: #a3a39b;
+}
+.adm-booth__dot.is-on {
+  background: #1f9d55;
+}
+.adm-booth__muted {
+  font-size: 13px;
+  color: #55554f;
+  overflow-wrap: anywhere;
+}
+.adm-booth__alert {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff4e5;
+  border: 1.5px solid #f0a020;
+  color: #3a2a00;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.adm-booth__now {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.adm-booth__athlete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+.adm-booth__tag {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #0a0a0a;
+  color: #ffffff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+.adm-booth__time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+}
+.adm-booth__facts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.adm-booth__seg {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #f2f2ee;
+}
+.adm-booth__segbtn {
+  height: 52px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: #3a3a36;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.adm-booth__segbtn.is-on {
+  background: #0a0a0a;
+  color: #ffffff;
+}
+.adm-booth__segbtn:disabled:not(.is-on) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.adm-booth__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.adm-booth__btn {
+  min-height: 56px;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1.5px solid #cfcfc7;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0a0a0a;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.2;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.adm-booth__btn.is-wide {
+  grid-column: 1 / -1;
+}
+.adm-booth__btn.is-primary {
+  border-color: #0a0a0a;
+  background: #0a0a0a;
+  color: #ffffff;
+}
+.adm-booth__btn.is-danger {
+  border-color: #bf0000;
+  background: #bf0000;
+  color: #ffffff;
+}
+.adm-booth__btn.is-small {
+  flex: none;
+  min-height: 44px;
+  font-size: 14px;
+}
+.adm-booth__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.adm-booth__hint {
+  margin: 0;
+  font-size: 13px;
+  color: #55554f;
+  line-height: 1.45;
+}
+.adm-booth__result {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+.adm-booth__result.is-ok {
+  color: #1f7a45;
+}
+.adm-booth__result.is-warn {
+  color: #a35a00;
+}
+.adm-booth__result.is-muted {
+  color: #55554f;
+}
+.adm-booth__gaps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  gap: 6px;
+}
+.adm-booth__gap {
+  height: 48px;
+  border: 1.5px solid #dadad2;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #3a3a36;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.adm-booth__gap.is-on {
+  border-color: #0a0a0a;
+  background: #0a0a0a;
+  color: #ffffff;
+}
+.adm-booth__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.adm-booth__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 0;
+  border-top: 1px solid #ecece5;
+}
+.adm-booth__row:first-child {
+  border-top: none;
+}
+.adm-booth__who {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.adm-booth__name {
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.adm-booth__badge {
+  flex: none;
+  max-width: 45%;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+.adm-booth__badge.is-ok {
+  background: #e7f6ec;
+  color: #1f7a45;
+}
+.adm-booth__badge.is-warn {
+  background: #fff4e5;
+  color: #a35a00;
+}
+.adm-booth__badge.is-muted {
+  background: #f2f2ee;
+  color: #55554f;
+}
+
 /* Breakpoints: desktop sidebar at 900px, two-column cards at 720px. */
 @media (min-width: 720px) {
   .adm-grid {

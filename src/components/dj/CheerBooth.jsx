@@ -4,11 +4,14 @@ import CheerQueue from './CheerQueue.jsx'
 import DuckerPanel from './DuckerPanel.jsx'
 import MusicPlayer from './MusicPlayer.jsx'
 import useCheerBooth from './useCheerBooth.js'
+import useBoothRemote from './useBoothRemote.js'
 import VolumePanel from './VolumePanel.jsx'
 import './booth.css'
 
 export default function CheerBooth({ onLogout }) {
   const booth = useCheerBooth()
+  // /admin can control this booth (mode, play, pause, stop, skip, replay, Ducker) and sees its status.
+  useBoothRemote(booth)
   const {
     started,
     mode,
